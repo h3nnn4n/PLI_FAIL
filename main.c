@@ -13,7 +13,6 @@ int main(){
     _instance *best  = NULL;
     _list     *queue = list_init();
     int i;
-    int j;
 
     i = 0;
 
@@ -28,25 +27,18 @@ int main(){
         _instance *ins = list_pop(queue);
 
         int flag;
-        best = save_the_best(best, ins, &flag);
+        flag = save_the_best(&best, ins);
         if ( flag == 1){
             continue;
         } else if (flag == -1){
             break;
         }
 
-        for ( j = 0 ; j < N ; j++ ){
-            if ( is_int(ins->x[j]) == 0 ){
-                list_insert(queue, branch_down(ins, j));
-                list_insert(queue, branch_up  (ins, j));
-                break;
-            }
-        }
+        branch(queue, ins);
 
         free_instance(ins);
     }
 
-    puts("--------------------------");
     print_instance(best);
 
     return EXIT_SUCCESS;

@@ -146,35 +146,53 @@ void free_instance(_instance *a){
 
 void print_instance(_instance *ins){
     int j;
-    printf(" Found %.1lf\n", ins->obj);
+
+    puts("");
+    puts("+-------------------------");
+
+    printf("|  Obj: %.1lf\n", ins->obj);
+    printf("|\n");
+
     for ( j = 0 ; j < N ; j++ ){
-        printf("x%d = %.1f\n", j, ins->x[j]);
+        printf("| x%d = %.1f\n", j, ins->x[j]);
     }
+
+    puts("+-------------------------");
+
+    return;
 }
 
-_instance* save_the_best(_instance* best, _instance* candidate, int *flag){
+int save_the_best(_instance** best, _instance* candidate){
     if (candidate == NULL){
-        *flag = -1;
-    } else if ( best != NULL ){
-        if (is_solved(candidate) && candidate->obj > best->obj && candidate->obj > 0){
-            memcpy(best, candidate, sizeof(_instance));
-            print_instance(best);
-            /*free_instance(candidate);*/
-            *flag = 1;
-        } 
+        return -1;
     } else {
         if (is_solved(candidate) && candidate->obj > 0){
-            puts("first\n\n");
-            best = (_instance*) malloc ( sizeof(_instance) );
-            memcpy(best, candidate, sizeof(_instance));
-            print_instance(best);
-            /*free_instance(candidate);*/
-            *flag = 1;
+            if ( (*best == NULL) ){
+                *best = (_instance*) malloc ( sizeof(_instance) );
+                memcpy(*best, candidate, sizeof(_instance));
+            } else if ( candidate->obj > (*best)->obj ) {
+                memcpy(*best, candidate, sizeof(_instance));
+            }
+
+            /*print_instance(*best);*/
+
+            free_instance(candidate);
+            return 1;
         }
     }
 
-    *flag = 0;
-
-    return best;
+    return 0;
 }
 
+void branch(_list* queue, _instance* ins){
+    int j; 
+    for ( j = 0 ; j < N ; j++ ){
+        if ( is_int(ins->x[j]) == 0 ){
+            list_insert(queue, branch_down(ins, j));
+            list_insert(queue, branch_up  (ins, j));
+            break;
+        }
+    }
+
+    return;
+}

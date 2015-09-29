@@ -43,6 +43,8 @@ void free_instance(_instance*);
 
 void print_instance(_instance*);
 
-_instance* save_the_best(_instance* best, _instance* candidate, int *flag);
+int save_the_best(_instance**, _instance*);
+
+void branch(_list*, _instance*);
 
 #endif
