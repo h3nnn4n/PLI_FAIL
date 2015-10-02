@@ -45,5 +45,7 @@ int main(){
     print_obj(best);
 #endif
 
+    free(best);
+
     return EXIT_SUCCESS;
 }
