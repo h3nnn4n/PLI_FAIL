@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-Wall -O2 -lglpk -lm -g
-SOURCES=main.c matrix.c utils.c
+CFLAGS=-I/usr/lib/openmpi/include -I/usr/lib/openmpi/include/openmpi -pthread -L/usr//lib -L/usr/lib/openmpi/lib -lmpi -ldl -lhwloc -Wall -O2 -lglpk -lm -g
+SOURCES=main.c matrix.c utils.c mpi_bnb.c
 BIN=main
 
 .PHONY: clean
