@@ -82,6 +82,8 @@ void list_insert(_list *h, _instance *a){
     new->ins  = data;
     new->next = tmp;
 
+    free_instance(a);
+
     return;
 }
 
