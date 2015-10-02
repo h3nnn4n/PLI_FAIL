@@ -4,8 +4,8 @@
 #include <glpk.h>
 
 #define M 1
-//#define N 10
-#define N 5000
+#define N 10
+//#define N 5000
 
 typedef struct{
     int    ia  [(M + 1) * (N + 1)]; // "Sparse" matrix 
