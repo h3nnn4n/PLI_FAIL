@@ -12,9 +12,6 @@ int main(){
     _instance *lp    = read_instance();
     _instance *best  = NULL;
     _list     *queue = list_init();
-    int i;
-
-    i = 0;
 
     glp_prob *lpp = build_model(lp);
 
@@ -22,10 +19,11 @@ int main(){
 
     list_insert(queue, lp);
 
-    while ( i++ < 200 ){
+    while ( 1 ){
         /*puts("--------------------------");*/
         _instance *ins = list_pop(queue);
 
+        // Stores the best
         int flag;
         flag = save_the_best(&best, ins);
         if ( flag == 1){
@@ -34,12 +32,18 @@ int main(){
             break;
         }
 
-        branch(queue, ins);
+        branch(queue, ins, best);
 
         free_instance(ins);
     }
 
+#ifdef __output_answer
     print_instance(best);
+#endif
+
+#ifdef __output_obj
+    print_obj(best);
+#endif
 
     return EXIT_SUCCESS;
 }

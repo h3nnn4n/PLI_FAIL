@@ -115,23 +115,33 @@ int is_solved(_instance *a){
 }
 
 _instance *branch_down(_instance *ins, int pos){
+    glp_prob *aux = NULL;
     _instance *new = (_instance*) malloc ( sizeof(_instance) );
     memcpy(new, ins, sizeof(_instance));
 
     new->x_ub[pos] = floor(new->x[pos]);
 
-    solve_model(new, build_model(new));
+    aux = build_model(new);
+
+    solve_model(new, aux);
+
+    glp_delete_prob(aux);
 
     return new;
 }
 
 _instance *branch_up(_instance *ins, int pos){
+    glp_prob *aux = NULL;
     _instance *new = (_instance*) malloc ( sizeof(_instance) );
     memcpy(new, ins, sizeof(_instance));
 
     new->x_lb[pos] = ceil(new->x[pos]);
 
-    solve_model(new, build_model(new));
+    aux = build_model(new);
+
+    solve_model(new, aux);
+
+    glp_delete_prob(aux);
 
     return new;
 }
@@ -144,7 +154,14 @@ void free_instance(_instance *a){
     return;
 }
 
+void print_obj(_instance *ins){
+    printf("|  Obj: %.1lf\n", ins->obj);
+
+    return;
+}
+
 void print_instance(_instance *ins){
+    /*return;*/
     int j;
 
     puts("");
@@ -174,7 +191,9 @@ int save_the_best(_instance** best, _instance* candidate){
                 memcpy(*best, candidate, sizeof(_instance));
             }
 
-            /*print_instance(*best);*/
+#ifdef __show_progress
+            print_obj(best);
+#endif
 
             free_instance(candidate);
             return 1;
@@ -184,15 +203,35 @@ int save_the_best(_instance** best, _instance* candidate){
     return 0;
 }
 
-void branch(_list* queue, _instance* ins){
+void branch(_list* queue, _instance* ins, _instance* best){
     int j; 
+
+    _instance *aux = NULL;
+
     for ( j = 0 ; j < N ; j++ ){
         if ( is_int(ins->x[j]) == 0 ){
-            list_insert(queue, branch_down(ins, j));
-            list_insert(queue, branch_up  (ins, j));
+            aux = branch_down(ins, j);
+
+            // Bounding
+            if ( save_the_best(&best, ins) == 0 ){
+                list_insert(queue, aux);
+            }
+
+            free_instance(aux);
+
+            aux = branch_up(ins, j);
+
+            // Bounding
+            if ( save_the_best(&best, ins) == 0 ){
+                list_insert(queue, aux);
+            }
+
+            free_instance(aux);
+
             break;
         }
     }
 
     return;
 }
+
