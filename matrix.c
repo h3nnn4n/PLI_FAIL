@@ -243,3 +243,12 @@ void branch(_list* queue, _instance* ins, _instance* best){
     return;
 }
 
+int list_size(_list *h){
+    _list *a;
+    int i;
+
+    for ( a = h->next, i = 0 ; a != NULL ; a = a->next, i++);
+
+    return i;
+}
+

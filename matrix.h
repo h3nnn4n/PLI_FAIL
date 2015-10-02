@@ -29,6 +29,7 @@ typedef struct __list{
 
 _list*       list_init();
 _instance*   list_pop(_list *);
+int          list_size(_list *);
 void         list_insert(_list *, _instance*);
 
 glp_prob* build_model(_instance*);
