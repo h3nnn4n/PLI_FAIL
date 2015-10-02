@@ -189,13 +189,19 @@ int save_the_best(_instance** best, _instance* candidate){
             if ( (*best == NULL) ){
                 *best = (_instance*) malloc ( sizeof(_instance) );
                 memcpy(*best, candidate, sizeof(_instance));
+
+#ifdef __output_progress
+                print_obj(*best);
+#endif
+
             } else if ( candidate->obj > (*best)->obj ) {
                 memcpy(*best, candidate, sizeof(_instance));
-            }
 
-#ifdef __show_progress
-            print_obj(best);
+#ifdef __output_progress
+                print_obj(*best);
 #endif
+
+            }
 
             free_instance(candidate);
             return 1;
