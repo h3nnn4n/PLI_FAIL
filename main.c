@@ -18,20 +18,22 @@
 
 #include "utils.h"
 
-sem_t *safeguard;
 MPI_Datatype dist_instance;
-int *occupied;
+sem_t        *safeguard;
+int          *occupied;
 
 int main(int argc, char *argv[]){
-    _instance  *lp    = read_instance();
     _instance  *best  = NULL;
-    _list      *queue = list_init();
     MPI_Status status;
     int        err;
     int        my_rank;
     int        np;
+    int        naoInt;
 
-    err = MPI_Init( &argc, &argv );
+    //err = MPI_Init( &argc, &argv );
+    err = MPI_Init_thread( &argc, &argv, MPI_THREAD_MULTIPLE, &naoInt );
+
+    //MPI_Barrier(MPI_COMM_WORLD);
 
     if ( err == MPI_ERR_OTHER ) {
         fprintf(stderr, "MPI_Init returned error!!\n");
@@ -44,12 +46,17 @@ int main(int argc, char *argv[]){
     MPI_Type_contiguous( sizeof(_instance), MPI_BYTE, &dist_instance);
     MPI_Type_commit(&dist_instance);
 
-    if (np <2){
+    if (np < 2){
         fprintf(stderr, "Not enought working horses!\n");
         exit(-1);
     }
 
     if ( my_rank == 0 ) { // Then I am master ov universe
+        printf("%d Master reporting for duty\n", my_rank);
+
+        _list      *queue = list_init();
+        _instance  *lp    = read_instance();
+
         int i = 0;
 
         glp_prob *lpp = build_model(lp);
@@ -57,6 +64,8 @@ int main(int argc, char *argv[]){
         solve_model(lp, lpp);
 
         list_insert(queue, lp);
+
+        puts("Populating the queue");
 
         // Populates the queue
         while ( list_size(queue) < np && list_size(queue) > 0 ){
@@ -80,36 +89,62 @@ int main(int argc, char *argv[]){
         // makes it able to start with more or less instances than mpi nodes
         // Not so important for now
         if ( list_size(queue) != np ){
-            fprintf(stderr, "Not enough nodes\n");
+            printf("Solution was found during initialization!\n");
             exit(-1);
+        } else {
+            printf("Starting with %d workers and %d instances\n", np, list_size(queue));
         }
 
         // Parallel processing starts here
         _thread_param *params = (_thread_param* ) malloc (sizeof(_thread_param ) * np);
         pthread_t *t          = (pthread_t*     ) malloc (sizeof(pthread_t     ) * np);
         occupied              = (int*           ) malloc (sizeof(int           ) * np);
+        safeguard             = NULL;
 
-        sleep(1);
+        if ( params != NULL && t != NULL && occupied != NULL ){
+            puts("Memory allocated");
+        } else {
+            fprintf(stderr, "Boom!\n");
+            exit(-1);
+        }
 
         int flag;
 
         for ( i = 1 ; i < np ; i++ ){
+            printf("Building semaphore %d\n", i);
+
             params[i].pos  = i;
             params[i].size = np;
             params[i].v    = occupied;
-            pthread_create(&t[i], NULL, (void*) &babysitter, (void*) &params);
-            sem_init(&safeguard[i], 0, 0);
+
+            if ( sem_init(&safeguard[i], 0, 0) != 0 ){
+                fprintf(stderr, "Failed at semaphore #%d\b", i);
+                exit(-1);
+            }
+
             occupied[i] = 0;
         }
 
+        for ( i = 1 ; i < np ; i++ ){
+            printf("Starting thread %d\n", i);
+
+            if ( pthread_create(&t[i], NULL, (void*) &babysitter, (void*) &params) != 0 ){
+                fprintf(stderr, "Failed at thread #%d\b", i);
+                exit(-1);
+            }
+        }
+
         // Workhorse
+
+        puts("\nStartging main loop");
 
         while ( list_size(queue) > 0 ){
             flag = 1;
 
             _instance *ins = list_pop(queue);
-            
+
             while ( flag ){
+                puts("yada");
                 for ( i = 1 ; i < np ; i++){
                     // Send stuff
                     if (occupied[i] == 0){
@@ -122,17 +157,20 @@ int main(int argc, char *argv[]){
                 }
             }
         }
-        
+
         for (i = 1; i < np; i++) {
             pthread_join(t[i], NULL);
         }
-        
+
         // and ends here
 
     } else {  // Ortherwise slave.
+        printf(" > Slave %d reporting for duty\n", my_rank);
         _instance *ins     = (_instance*) malloc ( sizeof(_instance)    );
+        _list      *queue  = list_init();
 
         while ( 1 ){
+
             MPI_Recv(ins, 1, dist_instance, 0, 0, MPI_COMM_WORLD, &status);
 
             while ( list_size(queue) < np && list_size(queue) > 0 ){
@@ -170,3 +208,4 @@ int main(int argc, char *argv[]){
 
     return EXIT_SUCCESS;
 }
+

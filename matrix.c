@@ -149,6 +149,8 @@ _instance *branch_up(_instance *ins, int pos){
 }
 
 void free_instance(_instance *a){
+    return; 
+
     free(a);
 
     a = NULL;
