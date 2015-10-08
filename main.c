@@ -76,12 +76,12 @@ int main(int argc, char *argv[]){
 
             // Stores the best
             int flag;
-            //flag = save_the_best(&best, ins);
-            //if ( flag == 1){
-                //continue;
-            //} else if (flag == -1){
-                //break;
-            //}
+            flag = save_the_best(&best, ins);
+            if ( flag == 1){
+                continue;
+            } else if (flag == -1){
+                break;
+            }
 
             branch(queue, ins, best);
 
@@ -96,6 +96,7 @@ int main(int argc, char *argv[]){
         // Not so important for now
         if ( list_size(queue) != np ){
             printf("Solution was found during initialization!\n");
+            print_obj(best);
             exit(-1);
         } else {
             printf("Starting with %d workers and %d instances\n", np, list_size(queue));
