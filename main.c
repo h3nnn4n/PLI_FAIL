@@ -27,8 +27,8 @@ int main(int argc, char *argv[]){
     MPI_Status status;
     int        err;
     int        my_rank;
-    int        np;
     int        naoInt;
+    int        np;
 
     //err = MPI_Init( &argc, &argv );
     err = MPI_Init_thread( &argc, &argv, MPI_THREAD_MULTIPLE, &naoInt );
@@ -65,7 +65,10 @@ int main(int argc, char *argv[]){
 
         list_insert(queue, lp);
 
+        printf(" Queue size is %d\n", list_size(queue));
+
         puts("Populating the queue");
+        puts("--------------------");
 
         // Populates the queue
         while ( list_size(queue) < np && list_size(queue) > 0 ){
@@ -73,17 +76,20 @@ int main(int argc, char *argv[]){
 
             // Stores the best
             int flag;
-            flag = save_the_best(&best, ins);
-            if ( flag == 1){
-                continue;
-            } else if (flag == -1){
-                break;
-            }
+            //flag = save_the_best(&best, ins);
+            //if ( flag == 1){
+                //continue;
+            //} else if (flag == -1){
+                //break;
+            //}
 
             branch(queue, ins, best);
 
             free_instance(ins);
+
+            printf(" Queue size is %d\n", list_size(queue));
         }
+        puts("--------------------");
 
         // TODO
         // makes it able to start with more or less instances than mpi nodes
@@ -98,8 +104,8 @@ int main(int argc, char *argv[]){
         // Parallel processing starts here
         _thread_param *params = (_thread_param* ) malloc (sizeof(_thread_param ) * np);
         pthread_t *t          = (pthread_t*     ) malloc (sizeof(pthread_t     ) * np);
+        safeguard             = (sem_t*         ) malloc (sizeof(sem_t         ) * np);
         occupied              = (int*           ) malloc (sizeof(int           ) * np);
-        safeguard             = NULL;
 
         if ( params != NULL && t != NULL && occupied != NULL ){
             puts("Memory allocated");
@@ -113,30 +119,36 @@ int main(int argc, char *argv[]){
         for ( i = 1 ; i < np ; i++ ){
             printf("Building semaphore %d\n", i);
 
-            params[i].pos  = i;
-            params[i].size = np;
-            params[i].v    = occupied;
-
             if ( sem_init(&safeguard[i], 0, 0) != 0 ){
                 fprintf(stderr, "Failed at semaphore #%d\b", i);
                 exit(-1);
             }
+        }
 
-            occupied[i] = 0;
+        for ( i = 1 ; i < np ; i++ ){
+            occupied[i]    = 0;
+        }
+
+        for ( i = 1 ; i < np ; i++ ){
+            params[i].pos  = i;
+            params[i].size = np;
+            params[i].v    = occupied;
         }
 
         for ( i = 1 ; i < np ; i++ ){
             printf("Starting thread %d\n", i);
 
-            if ( pthread_create(&t[i], NULL, (void*) &babysitter, (void*) &params) != 0 ){
+            if ( pthread_create(&t[i], NULL, (void*) &babysitter, (void*) &params[i]) != 0 ){
                 fprintf(stderr, "Failed at thread #%d\b", i);
                 exit(-1);
             }
+
         }
 
         // Workhorse
 
         puts("\nStartging main loop");
+        sleep(100);
 
         while ( list_size(queue) > 0 ){
             flag = 1;
@@ -144,7 +156,6 @@ int main(int argc, char *argv[]){
             _instance *ins = list_pop(queue);
 
             while ( flag ){
-                puts("yada");
                 for ( i = 1 ; i < np ; i++){
                     // Send stuff
                     if (occupied[i] == 0){
@@ -165,7 +176,7 @@ int main(int argc, char *argv[]){
         // and ends here
 
     } else {  // Ortherwise slave.
-        printf(" > Slave %d reporting for duty\n", my_rank);
+        printf(":  Slave %d reporting for duty\n", my_rank);
         _instance *ins     = (_instance*) malloc ( sizeof(_instance)    );
         _list      *queue  = list_init();
 
