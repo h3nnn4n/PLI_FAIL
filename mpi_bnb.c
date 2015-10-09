@@ -15,18 +15,19 @@ extern     MPI_Datatype dist_instance;
 extern int *occupied;
 
 void babysitter(_thread_param *p){
-    printf("Babysitter %p %d\n", p, p->pos);
     int pos;
 
     pos  = ( p->pos);
 
     MPI_Status status;
 
-    _instance *ans = (_instance*) malloc ( sizeof(_instance) );
+    int i = 0;
 
-    while ( 1 ){
+    printf("Babysitter %p %d\n", p, p->pos);
+    while ( i++ == 0 ){
         fprintf(stdout, " babysitter %d sending\n", pos);
-        MPI_Recv(ans, 1, dist_instance, pos, 0, MPI_COMM_WORLD, &status);
+
+        MPI_Recv(&p->ans, 1, dist_instance, pos, 0, MPI_COMM_WORLD, &status);
 
         occupied[pos] = 0;
 

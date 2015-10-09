@@ -23,7 +23,6 @@ sem_t        *safeguard;
 int          *occupied;
 
 int main(int argc, char *argv[]){
-    _instance  *best  = NULL;
     MPI_Status status;
     int        err;
     int        my_rank;
@@ -52,6 +51,7 @@ int main(int argc, char *argv[]){
     }
 
     if ( my_rank == 0 ) { // Then I am master ov universe
+        _instance  *best  = NULL;
         printf("%d Master reporting for duty\n", my_rank);
 
         _list      *queue = list_init();
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]){
         printf(" Queue size is %d\n", list_size(queue));
 
         puts("Populating the queue");
-        puts("--------------------");
+        puts("\n");
 
         // Populates the queue
         while ( list_size(queue) < np && list_size(queue) > 0 ){
@@ -89,7 +89,8 @@ int main(int argc, char *argv[]){
 
             printf(" Queue size is %d\n", list_size(queue));
         }
-        puts("--------------------");
+
+        puts("--------------------\n");
 
         // TODO
         // makes it able to start with more or less instances than mpi nodes
@@ -134,6 +135,7 @@ int main(int argc, char *argv[]){
             params[i].pos  = i;
             params[i].size = np;
             params[i].v    = occupied;
+            params[i].ans  = (_instance*) malloc ( sizeof(_instance) * 1);
         }
 
         for ( i = 1 ; i < np ; i++ ){
@@ -149,10 +151,30 @@ int main(int argc, char *argv[]){
         // Workhorse
 
         puts("\nStartging main loop");
-        sleep(100);
 
-        while ( list_size(queue) > 0 ){
+        /*goto skip;*/
+
+        /*while ( list_size(queue) > 0 ){*/
+        while ( 1 ){
             flag = 1;
+
+            int sval = -1;
+            int flag2 = 0;
+
+            if ( list_size(queue) == 0 ){
+                for ( i = 1 ; i < np ; i++){
+                    sem_getvalue(&safeguard[i], &sval); 
+                    if ( sval == 0 ){
+                        puts("wait");
+                    } else {
+                        flag2 = 1;
+                    }
+                }
+
+                if ( flag2 == 0 ){
+                    break;
+                }
+            } 
 
             _instance *ins = list_pop(queue);
 
@@ -160,6 +182,7 @@ int main(int argc, char *argv[]){
                 for ( i = 1 ; i < np ; i++){
                     // Send stuff
                     if (occupied[i] == 0){
+                        printf(" => Sending %.2f to %d\n", ins->obj, i);
                         MPI_Send(ins, 1, dist_instance, i, 0, MPI_COMM_WORLD);
                         occupied[i] = 1;
                         sem_post(&safeguard[i]);
@@ -170,6 +193,10 @@ int main(int argc, char *argv[]){
             }
         }
 
+/*skip:*/
+
+        puts("Quiting...");
+
         for (i = 1; i < np; i++) {
             pthread_join(t[i], NULL);
         }
@@ -178,15 +205,21 @@ int main(int argc, char *argv[]){
 
     } else {  // Ortherwise slave.
         printf(":  Slave %d reporting for duty\n", my_rank);
+        _instance  *best  = NULL;
         _instance *ins     = (_instance*) malloc ( sizeof(_instance)    );
         _list      *queue  = list_init();
 
-        while ( 1 ){
+        int ww = 0;
 
+        while ( ww == 0 ){
             MPI_Recv(ins, 1, dist_instance, 0, 0, MPI_COMM_WORLD, &status);
+
+            printf(":  Slave %d see, slave %d do. \n", my_rank, my_rank);
 
             while ( list_size(queue) < np && list_size(queue) > 0 ){
                 _instance *ins = list_pop(queue);
+
+                /*printf("\n --> Worker %d doing %d iteration with obj: %.2f\n\n", my_rank, ww, ins->obj);*/
 
                 // Stores the best
                 int flag;
@@ -200,7 +233,13 @@ int main(int argc, char *argv[]){
                 branch(queue, ins, best);
 
                 free_instance(ins);
+
+                if ( (ww++)%10 == 0 ){
+                    printf("%d\n", ww);
+                }
             }
+
+            printf("\n --> Worker %d found on the %d iteration solution %.2f\n\n", my_rank, ww, ins->obj);
 
             MPI_Send(ins, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
         }
@@ -214,7 +253,7 @@ int main(int argc, char *argv[]){
     print_obj(best);
 #endif
 
-    free(best);
+    /*free(best);*/
 
     err = MPI_Finalize();
 
