@@ -4,8 +4,8 @@
 #include <glpk.h>
 
 #define M 1
-//#define N 10
-#define N 5000
+#define N 50
+//#define N 5000
 
 typedef struct{
     int    ia  [(M + 1) * (N + 1)]; // "Sparse" matrix 
@@ -40,6 +40,8 @@ int is_solved(_instance*);
 
 _instance* branch_up(_instance*, int);
 _instance* branch_down(_instance*, int);
+
+void       bound(_list*, _instance*);
 
 void free_instance(_instance*);
 

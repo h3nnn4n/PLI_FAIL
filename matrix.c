@@ -149,9 +149,9 @@ _instance *branch_up(_instance *ins, int pos){
 }
 
 void free_instance(_instance *a){
-    return; 
-
-    free(a);
+    if ( a != NULL ) {
+        free(a);
+    }
 
     a = NULL;
 
@@ -168,17 +168,21 @@ void print_instance(_instance *ins){
     /*return;*/
     int j;
 
-    puts("");
-    puts("+-------------------------");
+    //puts("");
+    //puts("+-------------------------");
 
     printf("|  Obj: %.1lf\n", ins->obj);
-    printf("|\n");
+    //printf("|\n|  ");
 
     for ( j = 0 ; j < N ; j++ ){
-        printf("| x%d = %.1f\n", j, ins->x[j]);
+        if ( is_int(ins->x[j]) == 0) {
+            /*printf("%.1f ", ins->x[j]);*/
+            printf("x%d = %.1f ", j, ins->x[j]);
+        }
     }
 
-    puts("+-------------------------");
+    //puts("");
+    //puts("+-------------------------");
 
     return;
 }
@@ -206,6 +210,7 @@ int save_the_best(_instance** best, _instance* candidate){
             }
 
             free_instance(candidate);
+            candidate = NULL;
             return 1;
         }
     }
@@ -215,28 +220,32 @@ int save_the_best(_instance** best, _instance* candidate){
 
 void branch(_list* queue, _instance* ins, _instance* best){
     int j; 
+    int ret = -1;
 
     _instance *aux = NULL;
 
     for ( j = 0 ; j < N ; j++ ){
         if ( is_int(ins->x[j]) == 0 ){
+
+            // Bounding
             aux = branch_down(ins, j);
 
-            // Bounding
-            if ( save_the_best(&best, ins) == 0 ){
+            ret = save_the_best(&best, ins);
+            if ( ret == 0 && aux->obj > 0 ){
                 list_insert(queue, aux);
+            } else {
+                free_instance(aux);
             }
 
-            free_instance(aux);
-
+            // Bounding
             aux = branch_up(ins, j);
 
-            // Bounding
-            if ( save_the_best(&best, ins) == 0 ){
+            ret = save_the_best(&best, ins);
+            if ( ret == 0 && aux->obj > 0 ){
                 list_insert(queue, aux);
+            } else {
+                free_instance(aux);
             }
-
-            free_instance(aux);
 
             break;
         }
@@ -252,5 +261,31 @@ int list_size(_list *h){
     for ( a = h->next, i = 0 ; a != NULL ; a = a->next, i++);
 
     return i;
+}
+
+void bound(_list *h, _instance *best){
+    _list *aux;
+    _list *old;
+
+    if ( best == NULL ) {
+        return;
+    }
+
+    for ( aux = h->next ; aux != NULL && aux->ins->obj > best->obj ; aux = aux->next );
+
+    if ( aux != NULL ){
+        old       = aux->next;
+        aux->next = NULL;
+        aux       = old;
+    
+        while ( aux != NULL ){
+            free_instance(aux->ins);
+            old = aux->next;
+            free(aux);
+            aux = old;
+        }
+    }
+
+    return;
 }
 

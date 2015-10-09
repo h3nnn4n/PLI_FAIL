@@ -68,10 +68,10 @@ int main(int argc, char *argv[]){
         printf(" Queue size is %d\n", list_size(queue));
 
         puts("Populating the queue");
-        puts("\n");
+        puts("");
 
         // Populates the queue
-        while ( list_size(queue) < np && list_size(queue) > 0 ){
+        while ( list_size(queue) != (np - 1) && list_size(queue) > 0 ){
             _instance *ins = list_pop(queue);
 
             // Stores the best
@@ -80,14 +80,17 @@ int main(int argc, char *argv[]){
             if ( flag == 1){
                 continue;
             } else if (flag == -1){
+                puts("Boom/11111\n");
+                exit(-1);
                 break;
             }
+
+            /*printf(" Queue size is %d with %.2f\n", list_size(queue)+1, ins->obj);*/
 
             branch(queue, ins, best);
 
             free_instance(ins);
 
-            printf(" Queue size is %d\n", list_size(queue));
         }
 
         puts("--------------------\n");
@@ -95,7 +98,7 @@ int main(int argc, char *argv[]){
         // TODO
         // makes it able to start with more or less instances than mpi nodes
         // Not so important for now
-        if ( list_size(queue) != np ){
+        if ( list_size(queue) != np - 1 ){
             printf("Solution was found during initialization!\n");
             print_obj(best);
             exit(-1);
@@ -155,47 +158,67 @@ int main(int argc, char *argv[]){
         /*goto skip;*/
 
         /*while ( list_size(queue) > 0 ){*/
-        while ( 1 ){
+        int dead = 0;
+        while ( dead == 0 ){
             flag = 1;
 
-            int sval = -1;
-            int flag2 = 0;
+            //int sval = -1;
+            //int flag2 = 0;
 
-            if ( list_size(queue) == 0 ){
+            //if ( list_size(queue) == 0 ){
+                //for ( i = 1 ; i < np ; i++){
+                    //sem_getvalue(&safeguard[i], &sval); 
+                    //if ( sval == 0 ){
+                        //puts("wait");
+                    //} else {
+                        //flag2 = 1;
+                    //}
+                //}
+
+                //if ( flag2 == 0 ){
+                    //break;
+                //}
+            //} 
+
+
+            while ( flag ){
+                //sleep(0.1);
+                /*puts("ahahah");*/
+                dead = 1;
                 for ( i = 1 ; i < np ; i++){
-                    sem_getvalue(&safeguard[i], &sval); 
-                    if ( sval == 0 ){
-                        puts("wait");
-                    } else {
-                        flag2 = 1;
+                    if ( occupied[i] != -1 ) {
+                        dead = 0;
+                        break;
                     }
                 }
 
-                if ( flag2 == 0 ){
+                if ( dead ){
                     break;
                 }
-            } 
 
-            _instance *ins = list_pop(queue);
-
-            while ( flag ){
                 for ( i = 1 ; i < np ; i++){
                     // Send stuff
                     if (occupied[i] == 0){
+
+                        if (save_the_best(&best, params[i].ans)){
+
+                        }
+
+                        _instance *ins = list_pop(queue);
                         printf(" => Sending %.2f to %d\n", ins->obj, i);
+
                         MPI_Send(ins, 1, dist_instance, i, 0, MPI_COMM_WORLD);
                         occupied[i] = 1;
-                        sem_post(&safeguard[i]);
+                        dead = 0;
                         flag = 0;
+                        sem_post(&safeguard[i]);
                         break;
                     }
                 }
             }
         }
 
-/*skip:*/
-
-        puts("Quiting...");
+        puts("Finishing...");
 
         for (i = 1; i < np; i++) {
             pthread_join(t[i], NULL);
@@ -203,23 +226,27 @@ int main(int argc, char *argv[]){
 
         // and ends here
 
+        if ( best != NULL ) {
+            print_obj(best);
+        }
+
     } else {  // Ortherwise slave.
         printf(":  Slave %d reporting for duty\n", my_rank);
-        _instance  *best  = NULL;
-        _instance *ins     = (_instance*) malloc ( sizeof(_instance)    );
+        _instance  *best   = NULL;
+        _instance  *get    = (_instance*) malloc ( sizeof(_instance)    );
         _list      *queue  = list_init();
 
         int ww = 0;
 
-        while ( ww == 0 ){
-            MPI_Recv(ins, 1, dist_instance, 0, 0, MPI_COMM_WORLD, &status);
+        while ( ww <= 10 ){
+            MPI_Recv(get, 1, dist_instance, 0, 0, MPI_COMM_WORLD, &status);
+
+            list_insert(queue, get);
 
             printf(":  Slave %d see, slave %d do. \n", my_rank, my_rank);
 
-            while ( list_size(queue) < np && list_size(queue) > 0 ){
+            while ( list_size(queue) > 0 ){
                 _instance *ins = list_pop(queue);
-
-                /*printf("\n --> Worker %d doing %d iteration with obj: %.2f\n\n", my_rank, ww, ins->obj);*/
 
                 // Stores the best
                 int flag;
@@ -228,21 +255,52 @@ int main(int argc, char *argv[]){
                     continue;
                 } else if (flag == -1){
                     break;
-                }
+                } else if (flag == 0 && is_solved(ins)){
+                    free_instance(ins);
+                } else {
 
-                branch(queue, ins, best);
+                    branch(queue, ins, best);
 
-                free_instance(ins);
+                    free_instance(ins);
 
-                if ( (ww++)%10 == 0 ){
-                    printf("%d\n", ww);
+                    if ( (ww)%5000 == 0 ){
+                        bound(queue, best);
+                    }
+
+                    if ( (ww++)%25000 == 0 ){
+                        printf("\n --> Worker %d did %d iterations. %d nodes left. Best obj is %.2f\n", my_rank, ww-1, list_size(queue), best != NULL ? best->obj : 0.0 );
+                        /*printf("%d\n", ww);*/
+                        _list *aa = queue->next;
+                        for ( ; aa != NULL; aa = aa->next){
+
+                            printf(" %.2f", aa->ins->obj);
+                        }
+                        puts("");
+                    }
                 }
             }
 
-            printf("\n --> Worker %d found on the %d iteration solution %.2f\n\n", my_rank, ww, ins->obj);
+            if ( best == NULL ) {
+                printf("No Feasible solution Found in slave %d! Giving up...", my_rank);
+                _instance *nop = (_instance*) malloc ( sizeof(_instance) );
+                if ( nop == NULL ){
+                    exit(-666);
+                }
 
-            MPI_Send(ins, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
+                nop->obj = -1;
+
+                MPI_Send(nop, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
+
+                ww = 1<<12;
+                printf("Rip...\n");
+            } else {
+                printf("\n --> Worker %d found on the %d iteration solution %.2f\n\n", my_rank, ww, best->obj);
+                MPI_Send(best, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
+            }
         }
+
+        free(get);
+        free(best);
     }
 
 #ifdef __output_answer
