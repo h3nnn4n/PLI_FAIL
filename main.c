@@ -103,7 +103,7 @@ int main(int argc, char *argv[]){
             print_obj(best);
             exit(-1);
         } else {
-            printf("Starting with %d workers and %d instances\n", np, list_size(queue));
+            printf("Starting with %d slaves and %d instances\n", np-1, list_size(queue));
         }
 
         // Parallel processing starts here
@@ -151,41 +151,22 @@ int main(int argc, char *argv[]){
 
         }
 
-        // Workhorse
-
         puts("\nStartging main loop");
 
-        /*goto skip;*/
-
-        /*while ( list_size(queue) > 0 ){*/
         int dead = 0;
         while ( dead == 0 ){
             flag = 1;
 
-            //int sval = -1;
-            //int flag2 = 0;
-
-            //if ( list_size(queue) == 0 ){
-                //for ( i = 1 ; i < np ; i++){
-                    //sem_getvalue(&safeguard[i], &sval); 
-                    //if ( sval == 0 ){
-                        //puts("wait");
-                    //} else {
-                        //flag2 = 1;
-                    //}
-                //}
-
-                //if ( flag2 == 0 ){
-                    //break;
-                //}
-            //} 
-
-
             while ( flag ){
-                sleep(0.1);
-                /*puts("ahahah");*/
                 dead = 1;
+
+                if ( np == 0 ) {
+                    dead = 1;
+                    break;
+                }
+
                 for ( i = 1 ; i < np ; i++){
+                    /*printf("%d %d %d ded\n", i, occupied[i], np);*/
                     if ( occupied[i] != -1 ) {
                         dead = 0;
                         break;
@@ -199,19 +180,6 @@ int main(int argc, char *argv[]){
                 for ( i = 1 ; i < np ; i++){
                     // Send stuff
                     if (occupied[i] == 0){
-
-                        if (is_solved(params[i].ans) && params[i].ans->obj > 0){
-                            if ( (best == NULL) ){
-                                best = (_instance*) malloc ( sizeof(_instance) );
-                                memcpy(best, params[i].ans, sizeof(_instance));
-
-                            } else if ( params[i].ans->obj > (best)->obj ) {
-                                memcpy(best, params[i].ans, sizeof(_instance));
-                            }
-
-                            /*free_anstance(params[i].ans);*/
-                            /*params[i].ans = NULL;*/
-                        }
 
                         _instance *ins = list_pop(queue);
 
@@ -237,6 +205,18 @@ int main(int argc, char *argv[]){
         }
 
         // and ends here
+
+        for ( i = 1 ; i < np ; i++){
+            if (is_solved(params[i].ans) && params[i].ans->obj > 0){
+                if ( (best == NULL) ){
+                    best = (_instance*) malloc ( sizeof(_instance) );
+                    memcpy(best, params[i].ans, sizeof(_instance));
+
+                } else if ( params[i].ans->obj > (best)->obj ) {
+                    memcpy(best, params[i].ans, sizeof(_instance));
+                }
+            }
+        }
 
         if ( best != NULL ) {
             print_obj(best);
@@ -308,6 +288,7 @@ int main(int argc, char *argv[]){
             } else {
                 printf("\n --> Worker %d found on the %d iteration solution %.2f\n\n", my_rank, ww, best->obj);
                 MPI_Send(best, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
+                break;
             }
         }
 
