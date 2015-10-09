@@ -182,7 +182,7 @@ int main(int argc, char *argv[]){
 
 
             while ( flag ){
-                //sleep(0.1);
+                sleep(0.1);
                 /*puts("ahahah");*/
                 dead = 1;
                 for ( i = 1 ; i < np ; i++){
@@ -200,18 +200,30 @@ int main(int argc, char *argv[]){
                     // Send stuff
                     if (occupied[i] == 0){
 
-                        if (save_the_best(&best, params[i].ans)){
+                        if (is_solved(params[i].ans) && params[i].ans->obj > 0){
+                            if ( (best == NULL) ){
+                                best = (_instance*) malloc ( sizeof(_instance) );
+                                memcpy(best, params[i].ans, sizeof(_instance));
 
+                            } else if ( params[i].ans->obj > (best)->obj ) {
+                                memcpy(best, params[i].ans, sizeof(_instance));
+                            }
+
+                            /*free_anstance(params[i].ans);*/
+                            /*params[i].ans = NULL;*/
                         }
 
                         _instance *ins = list_pop(queue);
-                        printf(" => Sending %.2f to %d\n", ins->obj, i);
 
-                        MPI_Send(ins, 1, dist_instance, i, 0, MPI_COMM_WORLD);
-                        occupied[i] = 1;
-                        dead = 0;
-                        flag = 0;
-                        sem_post(&safeguard[i]);
+                        if ( ins != NULL ) {
+                            printf(" => Sending %.2f to %d\n", ins->obj, i);
+
+                            MPI_Send(ins, 1, dist_instance, i, 0, MPI_COMM_WORLD);
+                            occupied[i] = 1;
+                            dead = 0;
+                            flag = 0;
+                            sem_post(&safeguard[i]);
+                        }
                         break;
                     }
                 }
@@ -236,9 +248,9 @@ int main(int argc, char *argv[]){
         _instance  *get    = (_instance*) malloc ( sizeof(_instance)    );
         _list      *queue  = list_init();
 
-        int ww = 0;
+        int ww = 1;
 
-        while ( ww <= 10 ){
+        while ( 1 ){
             MPI_Recv(get, 1, dist_instance, 0, 0, MPI_COMM_WORLD, &status);
 
             list_insert(queue, get);
@@ -263,7 +275,7 @@ int main(int argc, char *argv[]){
 
                     free_instance(ins);
 
-                    if ( (ww)%5000 == 0 ){
+                    if ( (ww)%50 == 0 ){
                         bound(queue, best);
                     }
 
@@ -291,8 +303,8 @@ int main(int argc, char *argv[]){
 
                 MPI_Send(nop, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
 
-                ww = 1<<12;
                 printf("Rip...\n");
+                break;
             } else {
                 printf("\n --> Worker %d found on the %d iteration solution %.2f\n\n", my_rank, ww, best->obj);
                 MPI_Send(best, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
@@ -300,7 +312,7 @@ int main(int argc, char *argv[]){
         }
 
         free(get);
-        free(best);
+        /*free(best);*/
     }
 
 #ifdef __output_answer
