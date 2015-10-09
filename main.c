@@ -73,6 +73,7 @@ int main(int argc, char *argv[]){
         // Populates the queue
         while ( list_size(queue) != (np - 1) && list_size(queue) > 0 ){
             _instance *ins = list_pop(queue);
+            //printf(" Queue size is %d with %.2f\n", list_size(queue), ins->obj);
 
             // Stores the best
             int flag;
@@ -85,15 +86,19 @@ int main(int argc, char *argv[]){
                 break;
             }
 
-            /*printf(" Queue size is %d with %.2f\n", list_size(queue)+1, ins->obj);*/
-
             branch(queue, ins, best);
 
-            free_instance(ins);
+            bound(queue, best);
 
+            free_instance(ins);
         }
 
-        puts("--------------------\n");
+        _list *aux;
+        puts(  "+-------------------");
+        printf("| ");
+        for ( aux = queue->next ; aux != NULL ; aux = aux->next)
+            printf("%.2f ", aux->ins->obj); 
+        puts("\n+-------------------\n");
 
         // TODO
         // makes it able to start with more or less instances than mpi nodes
@@ -219,7 +224,9 @@ int main(int argc, char *argv[]){
         }
 
         if ( best != NULL ) {
+            puts("\n--------------------------");
             print_obj(best);
+            puts(  "--------------------------");
         }
 
     } else {  // Ortherwise slave.
@@ -255,7 +262,7 @@ int main(int argc, char *argv[]){
 
                     free_instance(ins);
 
-                    if ( (ww)%50 == 0 ){
+                    if ( (ww)%10 == 0 ){
                         bound(queue, best);
                     }
 

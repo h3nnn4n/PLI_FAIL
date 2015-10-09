@@ -21,8 +21,6 @@ void babysitter(_thread_param *p){
 
     MPI_Status status;
 
-    int i = 0;
-
     printf("Babysitter %p %d\n", p, p->pos);
     //while ( i++ == 0 ){
     fprintf(stdout, " babysitter %d reciving\n", pos);
