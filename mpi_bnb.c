@@ -10,9 +10,10 @@
 
 #include "matrix.h"
 
-extern     sem_t *safeguard;
-extern     MPI_Datatype dist_instance;
-extern int *occupied;
+extern int          *occupied;
+extern sem_t        *safeguard;
+extern MPI_Datatype dist_instance;
+
 
 void babysitter(_thread_param *p){
     int pos;
@@ -51,4 +52,5 @@ void babysitter(_thread_param *p){
 
     pthread_exit(NULL);
 }
+
 
