@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -O2 -lglpk -lm -g -lrt
+C_FLAGS=$(CFLAGS) -Wall -O2 -lglpk -lm -g -lrt
 SOURCES=main.c matrix.c utils.c mpi_bnb.c
 BIN=main
 
@@ -12,16 +12,16 @@ MPISTUFF=-I/usr/lib/openmpi/include -I/usr/lib/openmpi/include/openmpi -pthread 
 .PHONY: clean
 
 all:
-	$(CC) $(SOURCES) -o $(BIN) $(MPISTUFF) $(CFLAGS) 
+	$(CC) $(SOURCES) -o $(BIN) $(MPISTUFF) $(C_FLAGS) 
                                                
 answer:                                        
-	$(CC) $(SOURCES) -o $(BIN) $(MPISTUFF) $(CFLAGS) -D__output_answer
+	$(CC) $(SOURCES) -o $(BIN) $(MPISTUFF) $(C_FLAGS) -D__output_answer
                                                
 obj:                                           
-	$(CC) $(SOURCES) -o $(BIN) $(MPISTUFF) $(CFLAGS) -D__output_obj
+	$(CC) $(SOURCES) -o $(BIN) $(MPISTUFF) $(C_FLAGS) -D__output_obj
                                                
 progress:                                      
-	$(CC) $(SOURCES) -o $(BIN) $(MPISTUFF) $(CFLAGS) -D__output_progress
+	$(CC) $(SOURCES) -o $(BIN) $(MPISTUFF) $(C_FLAGS) -D__output_progress
 
 clean:
 	-@rm -rf core $(BIN) 2> /dev/null || true
