@@ -10,15 +10,60 @@
 
 #include "matrix.h"
 
-extern int          *occupied;
-extern sem_t        *safeguard;
-extern MPI_Datatype dist_instance;
+extern int             *occupied;
+extern sem_t           *safeguard;
+extern sem_t           *safeguard_best;
+extern pthread_mutex_t *bcaster;
+extern pthread_mutex_t *bchecker;
+extern MPI_Datatype     dist_instance;
 
+// Checks if the master sent a new best
+void bcaster_func(_thread_param *p){
+    _instance *get = (_instance*) malloc ( sizeof(_instance) );
+
+    MPI_Status status;
+
+    while ( 1 ){
+        MPI_Recv(get, 1, dist_instance, 0, 1, MPI_COMM_WORLD, &status);
+
+        pthread_mutex_lock(bcaster);
+
+        save_the_best(p->aans, get);
+        bound(p->queue, *p->aans);
+
+        pthread_mutex_unlock(bcaster);
+    } 
+
+    free(get);
+
+    return;
+}
+
+// Checks if a slave found a new best
+void bchecker_func(_thread_param *p){
+    _instance *get = (_instance*) malloc ( sizeof(_instance) );
+    int pos = ( p->pos);
+
+    MPI_Status status;
+
+    while ( 1 ) {
+        MPI_Recv(get, 1, dist_instance, pos, 1, MPI_COMM_WORLD, &status);
+
+        pthread_mutex_lock(bchecker);
+
+        p->v[pos] = 1;
+
+        save_the_best(p->aans, get);
+
+        pthread_mutex_unlock(bchecker);
+    }
+
+    free(get);
+    pthread_exit(NULL);
+}
 
 void babysitter(_thread_param *p){
-    int pos;
-
-    pos  = ( p->pos);
+    int pos = ( p->pos);
 
     MPI_Status status;
 
@@ -52,5 +97,4 @@ void babysitter(_thread_param *p){
 
     pthread_exit(NULL);
 }
-
 
