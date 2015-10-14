@@ -3,7 +3,9 @@
 
 #include <glpk.h>
 
+#ifndef M
 #define M 1
+#endif
 
 #ifndef N
 #define N 250
