@@ -33,10 +33,8 @@ int main(int argc, char *argv[]){
     time_t t_total = clock(); 
     time_t t_queue = clock();
 
-    //err = MPI_Init( &argc, &argv );
+    // Initialization
     err = MPI_Init_thread( &argc, &argv, MPI_THREAD_MULTIPLE, &naoInt );
-
-    //MPI_Barrier(MPI_COMM_WORLD);
 
     if ( err == MPI_ERR_OTHER ) {
         fprintf(stderr, "MPI_Init returned error!!\n");
@@ -56,6 +54,9 @@ int main(int argc, char *argv[]){
 
     time_t t_master = clock(); 
     time_t t_main = clock(); 
+
+    // End of initialization
+
     if ( my_rank == 0 ) { // Then I am master ov universe
         _instance  *best  = NULL;
 
@@ -63,6 +64,7 @@ int main(int argc, char *argv[]){
         printf("%d Master reporting for duty\n", my_rank);
 #endif
 
+        // Makes the queue for the master and reads the problems to be solved
         _list      *queue = list_init();
         _instance  *lp    = read_instance();
 
@@ -86,7 +88,9 @@ int main(int argc, char *argv[]){
         // Populates the queue
         while ( list_size(queue) != (np - 1) && list_size(queue) > 0 ){
             _instance *ins = list_pop(queue);
-            //printf(" Queue size is %d with %.2f\n", list_size(queue), ins->obj);
+#ifdef __QUEUE_PROGRESS
+            printf(" Queue size is %d with %.2f\n", list_size(queue), ins->obj);
+#endif
 
             // Stores the best
             int flag;
@@ -112,8 +116,9 @@ int main(int argc, char *argv[]){
         _list *aux;
         puts(  "+-------------------");
         printf("| ");
-        for ( aux = queue->next ; aux != NULL ; aux = aux->next)
+        for ( aux = queue->next ; aux != NULL ; aux = aux->next) {
             printf("%.2f ", aux->ins->obj); 
+        }
         puts("\n+-------------------\n");
 #endif
 
@@ -132,7 +137,7 @@ int main(int argc, char *argv[]){
 #endif
         }
 
-        // Parallel processing starts here
+        // Parallel processing initialization starts here
         _thread_param *params = (_thread_param* ) malloc (sizeof(_thread_param ) * np);
         pthread_t *t          = (pthread_t*     ) malloc (sizeof(pthread_t     ) * np);
         safeguard             = (sem_t*         ) malloc (sizeof(sem_t         ) * np);
@@ -180,13 +185,15 @@ int main(int argc, char *argv[]){
                 fprintf(stderr, "Failed at thread #%d\b", i);
                 exit(-1);
             }
-
         }
+        
+        // Initialization finished
 
 #ifdef __INIT_PROGRESS
         puts("\nStartging main loop");
 #endif
 
+        // Main Loop
         t_main = clock(); 
         int dead = 0;
         while ( dead == 0 ){
@@ -196,7 +203,6 @@ int main(int argc, char *argv[]){
                 dead = 1;
 
                 for ( i = 1 ; i < np ; i++){
-                    /*printf("%d %d %d ded\n", i, occupied[i], np);*/
                     if ( occupied[i] != -1 ) {
                         dead = 0;
                         break;
@@ -218,10 +224,7 @@ int main(int argc, char *argv[]){
                             printf(" => Sending %.2f to %d\n", ins->obj, i);
 #endif
 
-                            /*time_t ppp = clock();*/
                             MPI_Send(ins, 1, dist_instance, i, 0, MPI_COMM_WORLD);
-                            /*ppp = clock() - ppp;*/
-                            /*fprintf(stdout, "%f\n", (double)ppp/CLOCKS_PER_SEC);*/
 
                             occupied[i] = 1;
                             dead = 0;
@@ -233,19 +236,18 @@ int main(int argc, char *argv[]){
                 }
             }
         }
+        // End of main loop
 
 #ifdef __SEND_PROGRESS
         puts("Finishing...");
 #endif
 
+        // Babysitter sincronization
         for (i = 1; i < np; i++) {
             pthread_join(t[i], NULL);
         }
 
         t_main = clock() - t_main; 
-
-
-        // and ends here
 
         for ( i = 1 ; i < np ; i++){
             if (is_solved(params[i].ans) && params[i].ans->obj > 0){
@@ -271,9 +273,9 @@ int main(int argc, char *argv[]){
 #ifdef __SLAVE_PROGRESS
         printf(":  Slave %d reporting for duty\n", my_rank);
 #endif
-        _instance  *best   = NULL;
-        _instance  *get    = (_instance*) malloc ( sizeof(_instance)    );
-        _list      *queue  = list_init();
+        _instance  *get      = (_instance*) malloc ( sizeof(_instance) );
+        _instance  *best     = NULL;
+        _list      *queue    = list_init();
 
         int ww = 1;
 
@@ -308,20 +310,18 @@ int main(int argc, char *argv[]){
                         bound(queue, best);
                     }
 
-                    if ( (ww++)%25000 == 0 ){
 #ifdef __SLAVE_PROGRESS
+                    if ( (ww++)%25000 == 0 ){
                         printf("\n --> Worker %d did %d iterations. %d nodes left. Best obj is %.2f\n", my_rank, ww-1, list_size(queue), best != NULL ? best->obj : 0.0 );
-#endif
                         /*printf("%d\n", ww);*/
                         _list *aa = queue->next;
                         for ( ; aa != NULL; aa = aa->next){
 
                             printf(" %.2f", aa->ins->obj);
                         }
-#ifdef __SLAVE_PROGRESS
                         puts("");
-#endif
                     }
+#endif
                 }
             }
 
