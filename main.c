@@ -58,7 +58,7 @@ int main(int argc, char *argv[]){
     time_t t_master = clock(); 
     time_t t_main = clock(); 
 
-    // End of initialization
+    // End of MPI initialization
 
     if ( my_rank == 0 ) { // Then I am master ov universe
         _instance  *best  = NULL;
@@ -140,18 +140,22 @@ int main(int argc, char *argv[]){
 #endif
         }
 
+  // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // 
+ // // // Initialization // // // // // // // // // // // // // // // // // // // // // // // // // // // 
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // 
+
         // Parallel processing initialization starts here
         // Those are the babysitter
         _thread_param *params         = (_thread_param*   ) malloc ( sizeof(_thread_param   ) * np );
-        pthread_t *t                  = (pthread_t*       ) malloc ( sizeof(pthread_t       ) * np );
-        safeguard                     = (sem_t*           ) malloc ( sizeof(sem_t           ) * np );
-        occupied                      = (int*             ) malloc ( sizeof(int             ) * np );
+        pthread_t     *t              = (pthread_t*       ) malloc ( sizeof(pthread_t       ) * np );
+                       safeguard      = (sem_t*           ) malloc ( sizeof(sem_t           ) * np );
+                       occupied       = (int*             ) malloc ( sizeof(int             ) * np );
 
         // Those are for the bchecker
         _thread_param *params_checher = (_thread_param*   ) malloc ( sizeof(_thread_param   ) * np );
-        pthread_t *t_checker          = (pthread_t*       ) malloc ( sizeof(pthread_t       ) * np );
-        bchecker                      = (pthread_mutex_t* ) malloc ( sizeof(pthread_mutex_t ) * np );
-        int *new_best                 = (int*             ) malloc ( sizeof(int             ) * np );
+        pthread_t     *t_checker      = (pthread_t*       ) malloc ( sizeof(pthread_t       ) * np );
+                       bchecker       = (pthread_mutex_t* ) malloc ( sizeof(pthread_mutex_t ) * np );
+        int           *new_best       = (int*             ) malloc ( sizeof(int             ) * np );
 
         if ( params != NULL && t != NULL && occupied != NULL ){
 #ifdef __INIT_PROGRESS
@@ -166,12 +170,17 @@ int main(int argc, char *argv[]){
 
         for ( i = 1 ; i < np ; i++ ){
 #ifdef __INIT_PROGRESS
-            printf("Building semaphore %d\n", i);
+            printf("Building semaphore and mutex %d\n", i);
 #endif
 
             // TODO
             // Check for error
-            pthread_mutex_init(&bcaster[i], NULL);
+            /*pthread_mutex_init(&bcaster[i], NULL);*/
+
+            if ( pthread_mutex_init(&bchecker[i], NULL) != 0 ){
+                fprintf(stderr, "Failed at semaphore #%d\b", i);
+                exit(-1);
+            }
 
             if ( sem_init(&safeguard[i], 0, 0) != 0 ){
                 fprintf(stderr, "Failed at semaphore #%d\b", i);
@@ -179,11 +188,7 @@ int main(int argc, char *argv[]){
             }
         }
 
-        for ( i = 1 ; i < np ; i++ ){
-            occupied[i]    = 0;
-        }
-
-        for ( i = 1 ; i < np ; i++ ){
+        for ( i = 0 ; i < np ; i++ ){
             params[i].pos   = i;
             params[i].size  = np;
             params[i].v     = occupied;
@@ -195,10 +200,11 @@ int main(int argc, char *argv[]){
             params_checher[i].size  = np;
             params_checher[i].v     = new_best;
             params_checher[i].ans   = NULL;
-            params_checher[i].aans  = NULL;
+            params_checher[i].aans  = &best;
             params_checher[i].queue = NULL;
 
             new_best[i] = 0;
+            occupied[i] = 0;
         }
 
         for ( i = 1 ; i < np ; i++ ){
@@ -217,7 +223,9 @@ int main(int argc, char *argv[]){
             }
         }
         
-        // Initialization finished
+  // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // 
+ // // // Initialization finished // // // // // // // // // // // // // // // // // // // // // // // // 
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // 
 
 #ifdef __INIT_PROGRESS
         puts("\nStartging main loop");
@@ -230,6 +238,11 @@ int main(int argc, char *argv[]){
             flag = 1;
 
             while ( flag ){
+
+
+  // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // 
+ // // // Checks if can die // // // // // // // // // // // // // // // // // // // // // // // // // // 
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // 
                 dead = 1;
 
                 for ( i = 1 ; i < np ; i++){
@@ -242,6 +255,7 @@ int main(int argc, char *argv[]){
                 if ( dead ){
                     break;
                 }
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // 
 
                 for ( i = 1 ; i < np ; i++){
                     // Send stuff
@@ -254,8 +268,12 @@ int main(int argc, char *argv[]){
                                 continue;
                             }
 
-                            MPI_Send(best, 1, dist_instance, i, 1, MPI_COMM_WORLD);
+                            pthread_mutex_lock(&bchecker[j]);
 
+                            MPI_Send(best, 1, dist_instance, j, 1, MPI_COMM_WORLD);
+                            fprintf(stderr, " Master sending a new best to slave %d = %.2f\n", j, best->obj);
+
+                            pthread_mutex_unlock(&bchecker[j]);
                         }
 
                         new_best[i] = 0;
@@ -326,6 +344,10 @@ int main(int argc, char *argv[]){
         _list         *queue     = list_init();
         _instance     *best      = NULL;
 
+        params->pos   = my_rank;
+        params->size  = np;
+        params->v     = NULL;
+        params->ans   = NULL;
         params->aans  = &best;
         params->queue = queue;
 
@@ -347,9 +369,15 @@ int main(int argc, char *argv[]){
                 pthread_mutex_lock(bcaster);
                 _instance *ins = list_pop(queue);
 
-                int flag = save_the_best(&best, ins);    // Checks for a new best
+                int flag = -1;
+                flag = save_the_best(&best, ins);        // Checks for a new best
                 if ( flag == 1){                         // Found a new best
-                    MPI_Send(best, 1, dist_instance, 0, 1, MPI_COMM_WORLD);
+                    fprintf(stderr, "-> Slave %d found new best, sending... %.3f\n", my_rank, best->obj);
+                    MPI_Send(best, 1, dist_instance, 0, 2, MPI_COMM_WORLD);
+                    pthread_mutex_unlock(bcaster);
+                    continue;
+                } else if (flag == 2 ){                  // nonononononononono
+                    // Do nothing
                     pthread_mutex_unlock(bcaster);
                     continue;
                 } else if (flag == -1){                  // nonononononononono
@@ -363,7 +391,7 @@ int main(int argc, char *argv[]){
 
                     free_instance(ins);
 
-                    if ( (ww)%10 == 0 ){
+                    if ( (ww)%10 == 0 ){                 // Bounds each 10 cycles
                         bound(queue, best);
                     }
 

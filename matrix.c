@@ -192,6 +192,7 @@ int save_the_best(_instance** best, _instance* candidate){
         return -1;
     } else {
         if (is_solved(candidate) && candidate->obj > 0){
+            int flag = 1;
             if ( (*best == NULL) ){
                 *best = (_instance*) malloc ( sizeof(_instance) );
                 memcpy(*best, candidate, sizeof(_instance));
@@ -207,11 +208,13 @@ int save_the_best(_instance** best, _instance* candidate){
                 print_obj(*best);
 #endif
 
+            } else {
+                flag = 2;
             }
 
             free_instance(candidate);
             candidate = NULL;
-            return 1;
+            return flag;
         }
     }
 
