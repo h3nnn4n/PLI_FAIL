@@ -64,7 +64,8 @@ int main(int argc, char *argv[]){
         _instance  *best  = NULL;
 
 #ifdef __SLAVE_HAIL
-        printf("%d Master reporting for duty\n", my_rank);
+        printf(" | %.6f | %d Master reporting for duty\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank);
+        fprintf(stdout, "%f\n", );
 #endif
 
         // Makes the queue for the master and reads the problems to be solved
@@ -271,7 +272,9 @@ int main(int argc, char *argv[]){
                             pthread_mutex_lock(&bchecker[j]);
 
                             MPI_Send(best, 1, dist_instance, j, 1, MPI_COMM_WORLD);
+#ifdef __BCAST_BEST
                             fprintf(stderr, " Master sending a new best to slave %d = %.2f\n", j, best->obj);
+#endif
 
                             pthread_mutex_unlock(&bchecker[j]);
                         }
@@ -335,7 +338,7 @@ int main(int argc, char *argv[]){
 
     } else {  // Ortherwise slave.
 #ifdef __SLAVE_PROGRESS
-        printf(":  Slave %d reporting for duty\n", my_rank);
+        printf(" | %.6f | :  Slave %d reporting for duty\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank);
 #endif
                        bcaster   = (pthread_mutex_t*) malloc ( sizeof(pthread_mutex_t)    );
         pthread_t     *bcastert  = (pthread_t*      ) malloc ( sizeof(pthread_t)          );
@@ -362,7 +365,7 @@ int main(int argc, char *argv[]){
             list_insert(queue, get);
 
 #ifdef __SLAVE_PROGRESS
-            printf(":  Slave %d see, slave %d do. \n", my_rank, my_rank);
+            printf(" | %.6f | :  Slave %d see, slave %d do. \n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank, my_rank);
 #endif
 
             while ( list_size(queue) > 0 ){
@@ -372,7 +375,9 @@ int main(int argc, char *argv[]){
                 int flag = -1;
                 flag = save_the_best(&best, ins);        // Checks for a new best
                 if ( flag == 1){                         // Found a new best
-                    fprintf(stderr, "-> Slave %d found new best, sending... %.3f\n", my_rank, best->obj);
+#ifdef __BCAST_BEST
+                    fprintf(stderr, " | %.6f | -> Slave %d found new best, sending... %.3f\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank, best->obj);
+#endif
                     MPI_Send(best, 1, dist_instance, 0, 2, MPI_COMM_WORLD);
                     pthread_mutex_unlock(bcaster);
                     continue;
@@ -396,8 +401,8 @@ int main(int argc, char *argv[]){
                     }
 
 #ifdef __SLAVE_PROGRESS
-                    if ( (ww++)%25000 == 0 ){
-                        printf("\n --> Worker %d did %d iterations. %d nodes left. Best obj is %.2f\n", my_rank, ww-1, list_size(queue), best != NULL ? best->obj : 0.0 );
+                    if ( (ww++)%5 == 0 ){
+                        printf("\n | %.6f |  --> Worker %d did %d iterations. %d nodes left. Best obj is %.2f\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank, ww-1, list_size(queue), best != NULL ? best->obj : 0.0 );
                         /*printf("%d\n", ww);*/
                         _list *aa = queue->next;
                         for ( ; aa != NULL; aa = aa->next){
@@ -413,38 +418,50 @@ int main(int argc, char *argv[]){
 
             if ( best == NULL ) {
 #ifdef __SLAVE_PROGRESS
-                printf("No Feasible solution Found in slave %d! Giving up...", my_rank);
+                printf(" | %.6f | No Feasible solution Found in slave %d! Giving up...", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank);
 #endif
                 _instance *nop = (_instance*) malloc ( sizeof(_instance) );
                 if ( nop == NULL ){
-                    exit(-666);
+                    exit( -666 );
                 }
 
                 nop->obj = -1;
 
                 MPI_Send(nop, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
 
+                free(nop);
+
 #ifdef __SLAVE_PROGRESS
-                printf("Rip...\n");
+                printf(" Rip...\n");
 #endif
                 break;
             } else {
 #ifdef __SLAVE_PROGRESS
-                printf("\n --> Worker %d found on the %d iteration solution %.2f\n\n", my_rank, ww, best->obj);
+                printf("\n | %.6f |  --> Worker %d found on the %d iteration solution %.2f\n\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank, ww, best->obj);
 #endif
                 MPI_Send(best, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
                 break;
             }
         }
 
+
         // TODO
         // 
-        puts("TODO! Kill mutex + thread");
+        // puts("TODO! Kill mutex + thread");
         //
         // Kill mutex and thread
+        //
 
-        free(get);
-        /*free(best);*/
+        pthread_mutex_lock(bcaster);
+
+        pthread_cancel(*bcastert);
+        pthread_join(*bcastert, NULL);
+
+        pthread_mutex_unlock(bcaster);
+
+        //free(get);
+
+        //free(best);
     }
 
 #ifdef __output_answer
