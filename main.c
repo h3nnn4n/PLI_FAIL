@@ -404,7 +404,6 @@ int main(int argc, char *argv[]){
 #ifdef __SLAVE_PROGRESS
                     if ( (ww++)%5 == 0 ){
                         printf("\n | %.6f |  --> Worker %d did %d iterations. %d nodes left. Best obj is %.2f\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank, ww-1, list_size(queue), best != NULL ? best->obj : 0.0 );
-                        /*printf("%d\n", ww);*/
                         _list *aa = queue->next;
                         int cc;
                         for ( cc = 0; aa != NULL && cc<10; cc++,  aa = aa->next){
