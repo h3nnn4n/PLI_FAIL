@@ -36,17 +36,8 @@ void list_insert(_list *h, _instance *a){
         aux = h->next;
 
         while ( aux->next != NULL && data->obj < aux->next->ins->obj){
-            //if ( aux->next == NULL && aux->next->ins->obj >= data->obj ){
-                //break;
-            //}
             aux = aux->next;
-            printf("%f %f  \t %p %p\n", aux->ins->obj, data->obj, aux->ins, aux->next);
         }
-        puts("");
-
-        //for ( aux = h ; aux->next != NULL && aux->ins != NULL && aux->ins->obj < data->obj ; aux = aux->next ){
-        //printf("%f %f  \t %p %p\n", aux->ins->obj, data->obj, aux->ins, aux->next);
-        //}
 
         tmp       = aux->next;
         aux->next = new;
