@@ -23,12 +23,36 @@ void list_insert(_list *h, _instance *a){
 
     memcpy(data, a, sizeof(_instance));
 
-    for ( aux = h ; aux->next != NULL && aux->ins != NULL && aux->ins->obj > data->obj ; aux = aux->next );
+    if ( h->next == NULL  ){
+        h->next   = new;
+        new->ins  = data;
+        new->next = NULL;
+    } else if ( h->next->ins->obj < data->obj ){
+        tmp       = h->next;
+        h->next = new;
+        new->ins  = data;
+        new->next = tmp;
+    } else {
+        aux = h->next;
 
-    tmp       = aux->next;
-    aux->next = new;
-    new->ins  = data;
-    new->next = tmp;
+        while ( aux->next != NULL && data->obj < aux->next->ins->obj){
+            //if ( aux->next == NULL && aux->next->ins->obj >= data->obj ){
+                //break;
+            //}
+            aux = aux->next;
+            printf("%f %f  \t %p %p\n", aux->ins->obj, data->obj, aux->ins, aux->next);
+        }
+        puts("");
+
+        //for ( aux = h ; aux->next != NULL && aux->ins != NULL && aux->ins->obj < data->obj ; aux = aux->next ){
+        //printf("%f %f  \t %p %p\n", aux->ins->obj, data->obj, aux->ins, aux->next);
+        //}
+
+        tmp       = aux->next;
+        aux->next = new;
+        new->ins  = data;
+        new->next = tmp;
+    }
 
     free_instance(a);
 
