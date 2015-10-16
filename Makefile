@@ -1,6 +1,6 @@
 CC=gcc
 C_FLAGS=$(CFLAGS) -Wall -O2 -lglpk -lm -g -lrt
-SOURCES=main.c matrix.c utils.c mpi_bnb.c
+SOURCES=main.c list.c matrix.c utils.c mpi_bnb.c
 BIN=main
 
 # mpich

@@ -18,6 +18,8 @@
 
 #include "utils.h"
 
+#include "list.h"
+
 MPI_Datatype dist_instance;
 sem_t           *safeguard_best;
 sem_t           *safeguard;

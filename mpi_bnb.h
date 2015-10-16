@@ -3,6 +3,8 @@
 
 #include "matrix.h"
 
+#include "list.h"
+
 typedef struct {
     int *v;
     int pos;

@@ -5,6 +5,8 @@
 
 #include <glpk.h>
 
+#include "list.h"
+
 #include "matrix.h"
 
 glp_prob *build_model(_instance *ins){
@@ -56,52 +58,6 @@ double solve_model(_instance *ins, glp_prob *lp){
     }
 
     return ins->obj;
-}
-
-_list *list_init(){
-    _list *new = (_list*) malloc ( sizeof(_list) );
-
-    new->next = NULL;
-    new->ins  = NULL;
-
-    return new;
-}
-
-void list_insert(_list *h, _instance *a){
-    _instance *data = (_instance*) malloc ( sizeof(_instance) );
-    _list     *new  = (_list*    ) malloc ( sizeof(_list    ) );
-    _list     *aux;
-    _list     *tmp;
-
-    memcpy(data, a, sizeof(_instance));
-
-    for ( aux = h ; aux->next != NULL && aux->ins != NULL && aux->ins->obj > data->obj ; aux = aux->next );
-
-    tmp       = aux->next;
-    aux->next = new;
-    new->ins  = data;
-    new->next = tmp;
-
-    free_instance(a);
-
-    return;
-}
-
-_instance *list_pop(_list *h){
-    _list *a;
-    _instance *data = NULL;
-
-    a = h->next;
-    if (a != NULL){
-        data = a->ins;
-        h->next = a->next;
-    }
-
-    return data;
-}
-
-int is_int(double x){
-    return x - (int)x == 0.0 ? 1 : 0;
 }
 
 int is_solved(_instance *a){
@@ -255,15 +211,6 @@ void branch(_list* queue, _instance* ins, _instance* best){
     }
 
     return;
-}
-
-int list_size(_list *h){
-    _list *a;
-    int i;
-
-    for ( a = h->next, i = 0 ; a != NULL ; a = a->next, i++);
-
-    return i;
 }
 
 void bound(_list *h, _instance *best){
