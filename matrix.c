@@ -191,7 +191,9 @@ void branch(_list* queue, _instance* ins, _instance* best){
 
             ret = save_the_best(&best, ins);
             if ( ret == 0 && aux->obj > 0 ){
-                list_insert(queue, aux);
+                if ( (best != NULL && aux->obj > best->obj) || (best == NULL) ){
+                    list_insert(queue, aux);
+                }
             } else {
                 free_instance(aux);
             }
@@ -201,7 +203,9 @@ void branch(_list* queue, _instance* ins, _instance* best){
 
             ret = save_the_best(&best, ins);
             if ( ret == 0 && aux->obj > 0 ){
-                list_insert(queue, aux);
+                if ( (best != NULL && aux->obj > best->obj) || (best == NULL) ){
+                    list_insert(queue, aux);
+                }
             } else {
                 free_instance(aux);
             }
