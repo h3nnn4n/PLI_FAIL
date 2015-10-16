@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <glpk.h> 
 
@@ -8,11 +9,15 @@
 
 #include "utils.h"
 
+#include "list.h"
+
 int main(){
     _instance *lp    = read_instance();
     _instance *best  = NULL;
     _list     *queue = list_init();
+    int i = 0;
 
+    time_t t_clock = clock();
     glp_prob *lpp = build_model(lp);
 
     solve_model(lp, lpp);
@@ -20,7 +25,12 @@ int main(){
     list_insert(queue, lp);
 
     while ( 1 ){
-        /*puts("--------------------------");*/
+        if ( ++i % 10 == 0 ) {
+#ifdef __progress
+            printf("%d %d\n", i, list_size(queue));
+#endif
+        }
+
         _instance *ins = list_pop(queue);
 
         // Stores the best
@@ -28,14 +38,18 @@ int main(){
         flag = save_the_best(&best, ins);
         if ( flag == 1){
             continue;
+        } else if (flag == 2){
+            continue;
         } else if (flag == -1){
             break;
+        } else {
+            branch(queue, ins, best);
         }
-
-        branch(queue, ins, best);
 
         free_instance(ins);
     }
+
+    t_clock = clock() - t_clock;
 
 #ifdef __output_answer
     print_instance(best);
@@ -46,6 +60,8 @@ int main(){
 #endif
 
     free(best);
+
+    fprintf(stdout, " %f\n", (double)t_clock/CLOCKS_PER_SEC);
 
     return EXIT_SUCCESS;
 }
