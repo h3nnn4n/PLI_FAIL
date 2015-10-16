@@ -61,7 +61,8 @@ int main(){
 
     free(best);
 
-    fprintf(stdout, " %f\n", (double)t_clock/CLOCKS_PER_SEC);
+    // Total Time
+    fprintf(stdout, " %f %f %d\n", (double)t_clock/CLOCKS_PER_SEC, ((double)t_clock/CLOCKS_PER_SEC)/i, i );
 
     return EXIT_SUCCESS;
 }
