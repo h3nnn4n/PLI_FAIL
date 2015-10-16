@@ -39,18 +39,23 @@ set style line 11 lc rgb '#808080' lt 1
 set border 3 back ls 11
 set tics nomirror
 
-set logscale y
+#set logscale y
 
+set sample 10
+
+#set xrange[0:60]
 #set yrange[0:60]
 
-#f(x) = a * exp(b * x + c)
+f(x) = mean_y
+fit f(x) 'time500.dat' u 1:3 via mean_y
 
-#fit f(x) 'data.log'  using 2:3 via a, b, c
+stddev_y = sqrt(FIT_WSSR / (FIT_NDF + 1 ))
 
-plot    'time500.dat'    using 1:2 title 'Total'      with lp ls 1, \
-        'time500.dat'    using 1:3 title 'Mean'       with lp ls 2, \
-        'time500.dat'    using 1:4 title 'Branchs'    with lp ls 3, \
-        'time1000.dat'   using 1:2 title 'Total'      with lp ls 4, \
-        'time1000.dat'   using 1:3 title 'Mean'       with lp ls 5, \
-        'time1000.dat'   using 1:4 title 'Branchs'    with lp ls 6
+plot    'time500.dat'    using 1:3 title 'Total'      with lp ls 1, \
+        mean_y w l ls 4, mean_y+stddev_y w l ls 3, mean_y-stddev_y w l ls 3
+
+#plot    'time500.dat'    using 1:2 title 'Total'      with lp ls 1, \
+        #'time500.dat'    using 1:3 title 'Per Node'   with lp ls 2, \
+        #mean_y w l lt 3, mean_y+stddev_y w l lt 3, mean_y-stddev_y w l lt 3, \
+        #'time500.dat'    using 1:4 title 'Branchs'    with lp ls 3
 
