@@ -55,7 +55,9 @@ void bcaster_func(_thread_param *p){
 
     while ( 1 ){
         MPI_Recv(get, 1, dist_instance, 0, 1, MPI_COMM_WORLD, &status);
+#ifdef __BCAST_BEST
         fprintf(stderr, "   Slave %d got a new best from master best = %.2f\n", p->pos, get->obj);
+#endif
 
         pthread_mutex_lock(bcaster);
 
@@ -67,7 +69,7 @@ void bcaster_func(_thread_param *p){
 
     free(get);
 
-    return;
+    pthread_exit(NULL);
 }
 
 // Checks if a slave found a new best
@@ -79,7 +81,9 @@ void bchecker_func(_thread_param *p){
 
     while ( 1 ) {
         MPI_Recv(get, 1, dist_instance, pos, 2, MPI_COMM_WORLD, &status);
+#ifdef __BCAST_BEST
         fprintf(stderr, "  Got a new best from slave %d = %.2f\n", p->pos, get->obj);
+#endif
 
         pthread_mutex_lock(&bchecker[pos]);
 
