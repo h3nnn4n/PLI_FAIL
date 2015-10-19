@@ -7,7 +7,7 @@ set xlabel "Size"
 set autoscale
 
 set ylabel "Time"
-set title "Dist BnB"
+set title "Branch and Bound"
 
 set grid
 set style data points
@@ -46,14 +46,15 @@ set sample 10
 #set xrange[0:60]
 #set yrange[0:60]
 
-f(x) = mean_y
-fit f(x) 'time500.dat' u 1:3 via mean_y
+#f(x) = mean_y
+#fit f(x) 'time500.dat' u 1:3 via mean_y
 
-stddev_y = sqrt(FIT_WSSR / (FIT_NDF + 1 ))
+#stddev_y = sqrt(FIT_WSSR / (FIT_NDF + 1 ))
 
-plot    'time500.dat'    using 1:3 title 'Total'      with lp ls 1, \
-        mean_y w l ls 4, mean_y+stddev_y w l ls 3, mean_y-stddev_y w l ls 3
+#plot    'time500.dat'    using 1:3 title 'Total'      with lp ls 1, \
+        #mean_y w l ls 4, mean_y+stddev_y w l ls 3, mean_y-stddev_y w l ls 3
 
+plot "<./magia.py"        using 1:2 title 'Serial'     with lp ls 1
 #plot    'time500.dat'    using 1:2 title 'Total'      with lp ls 1, \
         #'time500.dat'    using 1:3 title 'Per Node'   with lp ls 2, \
         #mean_y w l lt 3, mean_y+stddev_y w l lt 3, mean_y-stddev_y w l lt 3, \
