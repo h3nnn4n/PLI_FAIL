@@ -56,14 +56,14 @@ int main(){
 #endif
 
 #ifdef __output_obj
-    puts("-----------");
+    puts("\n-----------");
     print_obj(best);
 #endif
 
     free(best);
 
     // Total Time
-    fprintf(stdout, " %f %f %d\n", (double)t_clock/CLOCKS_PER_SEC, ((double)t_clock/CLOCKS_PER_SEC)/i, i );
+    fprintf(stdout, " %f %f %d %f\n", (double)t_clock/CLOCKS_PER_SEC, ((double)t_clock/CLOCKS_PER_SEC)/i, i, i/(((double)t_clock/CLOCKS_PER_SEC)));
 
     return EXIT_SUCCESS;
 }
