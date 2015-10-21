@@ -171,6 +171,8 @@ int save_the_best(_instance** best, _instance* candidate){
             free_instance(candidate);
             candidate = NULL;
             return flag;
+        } else if ( candidate->obj <= 0.0 ){
+            return 2;
         }
     }
 
