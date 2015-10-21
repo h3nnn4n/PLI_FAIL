@@ -25,7 +25,7 @@ int main(){
     list_insert(queue, lp);
 
     while ( 1 ){
-        if ( ++i % 10 == 0 ) {
+        if ( ++i % 100 == 0 ) {
 #ifdef __progress
             printf("%d %d\n", i, list_size(queue));
 #endif
@@ -36,13 +36,13 @@ int main(){
         // Stores the best
         int flag;
         flag = save_the_best(&best, ins);
-        if ( flag == 1){
+        if        (flag ==  1){
             continue;
-        } else if (flag == 2){
+        } else if (flag ==  2){
             continue;
         } else if (flag == -1){
             break;
-        } else {
+        } else if (flag ==  0){
             branch(queue, ins, best);
         }
 
@@ -56,6 +56,7 @@ int main(){
 #endif
 
 #ifdef __output_obj
+    puts("-----------");
     print_obj(best);
 #endif
 

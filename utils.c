@@ -28,7 +28,7 @@ _instance* read_instance(){
     for ( i = 0 ; i < N ; i++ ){
         lp->x[i]    = 0.0;
         lp->x_lb[i] = 0.0;
-        lp->x_ub[i] = 4.0;
+        lp->x_ub[i] = 1.0;
     }
 
     return lp;
