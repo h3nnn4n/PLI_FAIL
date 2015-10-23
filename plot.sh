@@ -54,7 +54,11 @@ set sample 10
 #plot    'time500.dat'    using 1:3 title 'Total'      with lp ls 1, \
         #mean_y w l ls 4, mean_y+stddev_y w l ls 3, mean_y-stddev_y w l ls 3
 
-plot "<./magia.py"        using 1:2 title 'Serial'     with lp ls 1
+g(x) = a*d**(f+b*((x**2+e)/1000.0))+c
+fit g(x) "<./magia.py"    using 1:2 via a, b, c, d, e, f
+
+plot "<./magia.py"        using 1:2 title 'Serial'        with lp ls 1, \
+     g(x)                           title 'Interpolation' with lp ls 2
 #plot    'time500.dat'    using 1:2 title 'Total'      with lp ls 1, \
         #'time500.dat'    using 1:3 title 'Per Node'   with lp ls 2, \
         #mean_y w l lt 3, mean_y+stddev_y w l lt 3, mean_y-stddev_y w l lt 3, \

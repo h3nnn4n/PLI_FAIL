@@ -1,8 +1,8 @@
 #!/bin/bash
 
-NP=10
+NP=50
 
-for j in `seq 100 100 1000`
+for j in `seq 100 100 100`
 do
     echo $j$
 
