@@ -1,8 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <time.h>
+
 #include "matrix.h"
 #include "utils.h"
+
+double gettime(struct timeval start, struct timeval end){
+    struct timeval temp;
+
+    if ((end.tv_usec - start.tv_usec) < 0) {
+        temp.tv_sec  = end.tv_sec - start.tv_sec - 1;
+        temp.tv_usec = 1000000000 + end.tv_usec-start.tv_usec;
+    } else {
+        temp.tv_sec  = end.tv_sec  - start.tv_sec;
+        temp.tv_usec = end.tv_usec - start.tv_usec;
+    }
+
+    return temp.tv_sec + temp.tv_usec / 1000000.0;
+}
 
 _instance* read_instance(){
     _instance *lp = (_instance*) malloc ( sizeof(_instance) );
