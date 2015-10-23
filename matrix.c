@@ -72,38 +72,6 @@ int is_solved(_instance *a){
     return 1;
 }
 
-_instance *branch_down(_instance *ins, int pos){
-    glp_prob *aux = NULL;
-    _instance *new = (_instance*) malloc ( sizeof(_instance) );
-    memcpy(new, ins, sizeof(_instance));
-
-    new->x_ub[pos] = floor(new->x[pos]);
-
-    aux = build_model(new);
-
-    solve_model(new, aux);
-
-    glp_delete_prob(aux);
-
-    return new;
-}
-
-_instance *branch_up(_instance *ins, int pos){
-    glp_prob *aux = NULL;
-    _instance *new = (_instance*) malloc ( sizeof(_instance) );
-    memcpy(new, ins, sizeof(_instance));
-
-    new->x_lb[pos] = ceil(new->x[pos]);
-
-    aux = build_model(new);
-
-    solve_model(new, aux);
-
-    glp_delete_prob(aux);
-
-    return new;
-}
-
 void free_instance(_instance **a){
     if ( *a != NULL ) {
         free(*a);
@@ -172,11 +140,45 @@ int save_the_best(_instance** best, _instance** candidate){
             (*candidate) = NULL;
             return flag;
         } else if ( (*candidate)->obj <= 0.0 ){
+            free_instance((candidate));
+            (*candidate) = NULL;
             return 2;
         }
     }
 
     return 0;
+}
+
+_instance *branch_down(_instance *ins, int pos){
+    glp_prob *aux = NULL;
+    _instance *new = (_instance*) malloc ( sizeof(_instance) );
+    memcpy(new, ins, sizeof(_instance));
+
+    new->x_ub[pos] = floor(new->x[pos]);
+
+    aux = build_model(new);
+
+    solve_model(new, aux);
+
+    glp_delete_prob(aux);
+
+    return new;
+}
+
+_instance *branch_up(_instance *ins, int pos){
+    glp_prob *aux = NULL;
+    _instance *new = (_instance*) malloc ( sizeof(_instance) );
+    memcpy(new, ins, sizeof(_instance));
+
+    new->x_lb[pos] = ceil(new->x[pos]);
+
+    aux = build_model(new);
+
+    solve_model(new, aux);
+
+    glp_delete_prob(aux);
+
+    return new;
 }
 
 void branch(_list* queue, _instance** ins, _instance** best){
