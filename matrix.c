@@ -104,12 +104,12 @@ _instance *branch_up(_instance *ins, int pos){
     return new;
 }
 
-void free_instance(_instance *a){
-    if ( a != NULL ) {
-        free(a);
+void free_instance(_instance **a){
+    if ( *a != NULL ) {
+        free(*a);
     }
 
-    a = NULL;
+    *a = NULL;
 
     return;
 }
@@ -143,22 +143,22 @@ void print_instance(_instance *ins){
     return;
 }
 
-int save_the_best(_instance** best, _instance* candidate){
-    if (candidate == NULL){
+int save_the_best(_instance** best, _instance** candidate){
+    if ((*candidate) == NULL){
         return -1;
     } else {
-        if (is_solved(candidate) && candidate->obj > 0){
+        if (is_solved((*candidate)) && (*candidate)->obj > 0){
             int flag = 1;
             if ( (*best == NULL) ){
                 *best = (_instance*) malloc ( sizeof(_instance) );
-                memcpy(*best, candidate, sizeof(_instance));
+                memcpy(*best, (*candidate), sizeof(_instance));
 
 #ifdef __output_progress
                 print_obj(*best);
 #endif
 
-            } else if ( candidate->obj > (*best)->obj ) {
-                memcpy(*best, candidate, sizeof(_instance));
+            } else if ( (*candidate)->obj > (*best)->obj ) {
+                memcpy(*best, (*candidate), sizeof(_instance));
 
 #ifdef __output_progress
                 print_obj(*best);
@@ -168,10 +168,10 @@ int save_the_best(_instance** best, _instance* candidate){
                 flag = 2;
             }
 
-            free_instance(candidate);
-            candidate = NULL;
+            free_instance((candidate));
+            (*candidate) = NULL;
             return flag;
-        } else if ( candidate->obj <= 0.0 ){
+        } else if ( (*candidate)->obj <= 0.0 ){
             return 2;
         }
     }
@@ -179,37 +179,37 @@ int save_the_best(_instance** best, _instance* candidate){
     return 0;
 }
 
-void branch(_list* queue, _instance* ins, _instance* best){
+void branch(_list* queue, _instance** ins, _instance** best){
     int j; 
     int ret = -1;
 
     _instance *aux = NULL;
 
     for ( j = 0 ; j < N ; j++ ){
-        if ( is_int(ins->x[j]) == 0 ){
+        if ( is_int((*ins)->x[j]) == 0 ){
 
             // Bounding
-            aux = branch_down(ins, j);
+            aux = branch_down(*ins, j);
 
-            ret = save_the_best(&best, ins);
+            ret = save_the_best(best, ins);
             if ( ret == 0 && aux->obj > 0 ){
-                if ( (best != NULL && aux->obj > best->obj) || (best == NULL) ){
-                    list_insert(queue, aux);
+                if ( (best != NULL && aux->obj > (*best)->obj) || (*best == NULL) ){
+                    list_insert(queue, &aux);
                 }
             } else {
-                free_instance(aux);
+                free_instance(&aux);
             }
 
             // Bounding
-            aux = branch_up(ins, j);
+            aux = branch_up(*ins, j);
 
-            ret = save_the_best(&best, ins);
+            ret = save_the_best(best, ins);
             if ( ret == 0 && aux->obj > 0 ){
-                if ( (best != NULL && aux->obj > best->obj) || (best == NULL) ){
-                    list_insert(queue, aux);
+                if ( (best != NULL && aux->obj > (*best)->obj) || (best == NULL) ){
+                    list_insert(queue, &aux);
                 }
             } else {
-                free_instance(aux);
+                free_instance(&aux);
             }
 
             break;
@@ -235,7 +235,7 @@ void bound(_list *h, _instance *best){
         aux       = old;
     
         while ( aux != NULL ){
-            free_instance(aux->ins);
+            free_instance(&aux->ins);
             old = aux->next;
             free(aux);
             aux = old;

@@ -15,13 +15,13 @@ _list *list_init(){
     return new;
 }
 
-void list_insert(_list *h, _instance *a){
+void list_insert(_list *h, _instance **a){
     _instance *data = (_instance*) malloc ( sizeof(_instance) );
     _list     *new  = (_list*    ) malloc ( sizeof(_list    ) );
     _list     *aux;
     _list     *tmp;
 
-    memcpy(data, a, sizeof(_instance));
+    memcpy(data, *a, sizeof(_instance));
 
     if ( h->next == NULL  ){
         h->next   = new;
