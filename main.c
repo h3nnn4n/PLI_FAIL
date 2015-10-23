@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include <time.h> 
+#include <sys/time.h> 
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -34,8 +35,14 @@ int main(int argc, char *argv[]){
     int        naoInt;
     int        np;
 
-    time_t t_total = clock(); 
-    time_t t_queue = clock();
+    struct timeval t_total_start;
+    struct timeval t_total_end;
+
+    struct timeval t_slave_start;
+    struct timeval t_slave_end;
+
+    //clock_gettime(CLOCK_MONOTONIC_RAW, &t_total_start);
+    //clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t_total_start);
 
     // Initialization
     err = MPI_Init_thread( &argc, &argv, MPI_THREAD_MULTIPLE, &naoInt );
@@ -56,16 +63,14 @@ int main(int argc, char *argv[]){
         exit(-1);
     }
 
-    time_t t_master = clock(); 
-    time_t t_main = clock(); 
-
     // End of MPI initialization
 
     if ( my_rank == 0 ) { // Then I am master ov universe
+        gettimeofday(&t_total_start, NULL);
         _instance  *best  = NULL;
 
 #ifdef __SLAVE_HAIL
-        printf(" | %.6f | %d Master reporting for duty\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank);
+        printf(" | %d Master reporting for duty\n", my_rank);
         fprintf(stdout, "%f\n", );
 #endif
 
@@ -73,7 +78,6 @@ int main(int argc, char *argv[]){
         _list      *queue = list_init();
         _instance  *lp    = read_instance();
 
-        t_queue = clock(); 
 
         int i = 0;
 
@@ -81,7 +85,7 @@ int main(int argc, char *argv[]){
 
         solve_model(lp, lpp);
 
-        list_insert(queue, lp);
+        list_insert(queue, &lp);
 
 #ifdef __QUEUE_PROGRESS
         printf(" Queue size is %d\n", list_size(queue));
@@ -99,7 +103,7 @@ int main(int argc, char *argv[]){
 
             // Stores the best
             int flag;
-            flag = save_the_best(&best, ins);
+            flag = save_the_best(&best, &ins);
             if ( flag == 1){
                 continue;
             } else if (flag == -1){
@@ -108,14 +112,12 @@ int main(int argc, char *argv[]){
                 break;
             }
 
-            branch(queue, ins, best);
+            branch(queue, &ins, &best);
 
             bound(queue, best);
 
-            free_instance(ins);
+            free_instance(&ins);
         }
-
-        t_queue  = clock() - t_queue; 
 
 #ifdef __QUEUE_START
         _list *aux;
@@ -224,7 +226,7 @@ int main(int argc, char *argv[]){
                 exit(-1);
             }
         }
-        
+
   // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // 
  // // // Initialization finished // // // // // // // // // // // // // // // // // // // // // // // // 
 // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // 
@@ -234,7 +236,6 @@ int main(int argc, char *argv[]){
 #endif
 
         // Main Loop
-        t_main = clock(); 
         int dead = 0;
         while ( dead == 0 ){
             flag = 1;
@@ -315,8 +316,6 @@ int main(int argc, char *argv[]){
             pthread_join(t[i], NULL);
         }
 
-        t_main = clock() - t_main; 
-
         for ( i = 1 ; i < np ; i++){
             if (is_solved(params[i].ans) && params[i].ans->obj > 0){
                 if ( (best == NULL) ){
@@ -339,7 +338,8 @@ int main(int argc, char *argv[]){
 
     } else {  // Ortherwise slave.
 #ifdef __SLAVE_PROGRESS
-        printf(" | %.6f | :  Slave %d reporting for duty\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank);
+        gettimeofday(&t_slave_start, NULL);
+        printf(" | :  Slave %d reporting for duty\n", my_rank);
 #endif
                        bcaster   = (pthread_mutex_t*) malloc ( sizeof(pthread_mutex_t)    );
         pthread_t     *bcastert  = (pthread_t*      ) malloc ( sizeof(pthread_t)          );
@@ -363,10 +363,11 @@ int main(int argc, char *argv[]){
         while ( 1 ){
             MPI_Recv(get, 1, dist_instance, 0, 0, MPI_COMM_WORLD, &status);
 
-            list_insert(queue, get);
+            list_insert(queue, &get);
 
 #ifdef __SLAVE_PROGRESS
-            printf(" | %.6f | :  Slave %d see, slave %d do. \n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank, my_rank);
+            gettimeofday(&t_slave_end, NULL);
+            printf(" | %.6f | :  Slave %d see, slave %d do. \n", gettime(t_slave_start, t_slave_end), my_rank, my_rank);
 #endif
 
             while ( list_size(queue) > 0 ){
@@ -374,10 +375,11 @@ int main(int argc, char *argv[]){
                 _instance *ins = list_pop(queue);
 
                 int flag = -1;
-                flag = save_the_best(&best, ins);        // Checks for a new best
+                flag = save_the_best(&best, &ins);        // Checks for a new best
                 if ( flag == 1){                         // Found a new best
 #ifdef __BCAST_BEST
-                    fprintf(stderr, " | %.6f | -> Slave %d found new best, sending... %.3f\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank, best->obj);
+                    gettimeofday(&t_total_end, NULL);
+                    fprintf(stderr, " | %.6f | -> Slave %d found new best, sending... %.3f\n", gettime(t_slave_start, t_slave_end), my_rank, best->obj);
 #endif
 
                     MPI_Send(best, 1, dist_instance, 0, 2, MPI_COMM_WORLD);
@@ -392,21 +394,22 @@ int main(int argc, char *argv[]){
                     //pthread_mutex_unlock(bcaster);
                     //break;
                 } else if (flag == 0 && is_solved(ins)){ // Found a feasible solution but it is worse than the best
-                    free_instance(ins);
+                    free_instance(&ins);
                     //pthread_mutex_unlock(bcaster);
                 } else {                                 // Continue the brnaching
 
-                    branch(queue, ins, best);
+                    branch(queue, &ins, &best);
 
-                    free_instance(ins);
+                    free_instance(&ins);
 
                     if ( (ww)%2 == 0 ){                 // Bounds each 10 cycles
                         bound(queue, best);
                     }
 
 #ifdef __SLAVE_PROGRESS
-                    if ( (ww++)%10 == 0 ){
-                        printf("\n | %.6f |  --> Worker %d did %d iterations. %d nodes left. Best obj is %.2f\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank, ww-1, list_size(queue), best != NULL ? best->obj : 0.0 );
+                    if ( (ww++)%50 == 0 ){
+                        gettimeofday(&t_slave_end, NULL);
+                        printf("\n | %.6f |  --> Worker %d did %d iterations. %d nodes left. Best obj is %.2f\n", gettime(t_slave_start, t_total_end), my_rank, ww-1, list_size(queue), best != NULL ? best->obj : 0.0 );
                         _list *aa = queue->next;
                         int cc;
                         for ( cc = 0; aa != NULL && cc<10; cc++,  aa = aa->next){
@@ -421,7 +424,8 @@ int main(int argc, char *argv[]){
 
             if ( best == NULL ) {
 #ifdef __SLAVE_PROGRESS
-                printf(" | %.6f | No Feasible solution Found in slave %d! Giving up...", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank);
+                gettimeofday(&t_total_end, NULL);
+                printf(" | %.6f | No Feasible solution Found in slave %d! Giving up...", gettime(t_slave_start, t_slave_end), my_rank);
 #endif
                 _instance *nop = (_instance*) malloc ( sizeof(_instance) );
                 if ( nop == NULL ){
@@ -439,19 +443,13 @@ int main(int argc, char *argv[]){
 #endif
             } else {
 #ifdef __SLAVE_PROGRESS
-                printf("\n | %.6f |  --> Worker %d found on the %d iteration solution %.2f\n\n", (double)(clock()-t_total)/CLOCKS_PER_SEC, my_rank, ww, best->obj);
+                gettimeofday(&t_total_end, NULL);
+                printf("\n | %.6f |  --> Worker %d found on the %d iteration solution %.2f\n\n",gettime(t_slave_start, t_total_end) , my_rank, ww, best->obj);
 #endif
                 MPI_Send(best, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
             }
             break;
         }
-
-        // TODO
-        // 
-        // puts("TODO! Kill mutex + thread");
-        //
-        // Kill mutex and thread
-        //
 
         pthread_mutex_lock(bcaster);
 
@@ -475,10 +473,11 @@ int main(int argc, char *argv[]){
 
     /*free(best);*/
 
-    err = MPI_Finalize();
-
-    t_total  = clock() - t_total; 
-    t_master = clock() - t_master; 
+    if ( my_rank == 0 ) {
+        //clock_gettime(CLOCK_MONOTONIC_RAW, &t_total_end);
+        //clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t_total_end);
+        gettimeofday(&t_total_end, NULL);
+    }
 
     sem_printer = (sem_t*) malloc (sizeof(sem_t) * 1);
 
@@ -489,9 +488,12 @@ int main(int argc, char *argv[]){
 
     sem_wait(sem_printer);
     if ( my_rank == 0 ) {                               // PID |  size | total time                   |    master process time         |     main time                | Initialization time
-        fprintf(stdout, "%d %d \t %f \t %f \t %f \t %f\n", my_rank, N, (double)t_total/CLOCKS_PER_SEC, (double)t_master/CLOCKS_PER_SEC, (double)t_main/CLOCKS_PER_SEC, (double)t_queue/CLOCKS_PER_SEC);
+        fprintf(stdout, "%f\n", gettime(t_total_start, t_total_end));
+        //fprintf(stdout, "%d %d \t %f \t %f \t %f \t %f\n", my_rank, N, (double)t_total/CLOCKS_PER_SEC, (double)t_master/CLOCKS_PER_SEC, (double)t_main/CLOCKS_PER_SEC, (double)t_queue/CLOCKS_PER_SEC);
     }
     sem_post(sem_printer);
+
+    err = MPI_Finalize();
 
     return EXIT_SUCCESS;
 }
