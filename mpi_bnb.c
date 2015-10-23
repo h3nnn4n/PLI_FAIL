@@ -116,7 +116,7 @@ void bcaster_func(_thread_param *p){
         ret = pthread_mutex_timedlock(bcaster, &timer_out);
 
         if (ret == 0) {
-            int ret = save_the_best_no_free(p->aans, get);
+            save_the_best_no_free(p->aans, get);
             //printf(" --------------------- %d %d %.3f\n", p->pos, ret, get->obj);
 
             pthread_mutex_unlock(bcaster);
