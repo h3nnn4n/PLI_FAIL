@@ -72,26 +72,57 @@ void bcaster_func(_thread_param *p){
 
     while ( 1 ){
 #ifdef IPROBE
-        //pthread_mutex_lock(bcaster);
         while ( !flag ){
+            //pthread_mutex_lock(bcaster);
+
             clock_nanosleep(CLOCK_MONOTONIC, 0, &slower, NULL);
+
             MPI_Iprobe(0, 1, MPI_COMM_WORLD, &flag, &status);
+
+            //pthread_mutex_unlock(bcaster);
         }
         flag = 0;
-        //pthread_mutex_unlock(bcaster);
 #endif
 
         MPI_Recv(get, 1, dist_instance, 0, 1, MPI_COMM_WORLD, &status);
+
+        if ( get->obj == -1 ){
+
+            _instance *nop = (_instance*) malloc ( sizeof(_instance) );
+            if ( nop == NULL ){ exit( -666 ); }
+            nop->obj = -1;
+            MPI_Send(nop, 1, dist_instance, 0, 2, MPI_COMM_WORLD);
+            free(nop);
+
+            //fprintf(stdout,"Slave of slave %d giving up\n", 0);
+            break;
+        }
+
 #ifdef __BCAST_BEST
         fprintf(stderr, "   Slave %d got a new best from master best = %.2f\n", p->pos, get->obj);
 #endif
 
-        pthread_mutex_lock(bcaster);
+        //pthread_mutex_lock(bcaster);
 
-        int ret = save_the_best_no_free(p->aans, get);
-        printf(" --------------------- %d %d %.3f\n", p->pos, ret, get->obj);
+        int ret;
 
-        pthread_mutex_unlock(bcaster);
+        struct timespec timer_out;
+
+        clock_gettime(CLOCK_REALTIME, &timer_out);
+
+        timer_out.tv_sec += 3;
+        timer_out.tv_nsec = 0;
+
+        ret = pthread_mutex_timedlock(bcaster, &timer_out);
+
+        if (ret == 0) {
+            int ret = save_the_best_no_free(p->aans, get);
+            //printf(" --------------------- %d %d %.3f\n", p->pos, ret, get->obj);
+
+            pthread_mutex_unlock(bcaster);
+        } else {
+            fprintf(stderr, "Lock timed out on slave %d\n", p->pos);
+        }
     } 
 
     free(get);
@@ -116,16 +147,13 @@ void bchecker_func(_thread_param *p){
 
     while ( 1 ) {
 #ifdef IPROBE
-        //pthread_mutex_lock(&bchecker[pos]);
         while ( !flag ){
-            //puts("sleeping");
+            pthread_mutex_lock(&bchecker[pos]);
             clock_nanosleep(CLOCK_MONOTONIC, 0, &slower, NULL);
-            //puts("waking n checking");
             MPI_Iprobe(pos, 2, MPI_COMM_WORLD, &flag, &status);
-            //puts("checked");
+            pthread_mutex_unlock(&bchecker[pos]);
         }
         flag = 0;
-        //pthread_mutex_unlock(&bchecker[pos]);
 #endif
 
         if ( get == NULL ){
@@ -134,12 +162,16 @@ void bchecker_func(_thread_param *p){
             
         MPI_Recv(get, 1, dist_instance, pos, 2, MPI_COMM_WORLD, &status);
 
+        if ( get->obj == -1 ){
+            //fprintf(stdout,"bchecker %d giving up\n", pos);
+            break;
+        }
+
         pthread_mutex_lock(&bchecker[pos]);
 
 #ifdef __BCAST_BEST
         fprintf(stderr, "  Got a new best from slave %d = %.2f\n", p->pos, get->obj);
 #endif
-
 
         int ret = save_the_best_no_free(p->aans, get);
 

@@ -41,9 +41,6 @@ int main(int argc, char *argv[]){
     struct timeval t_slave_start;
     struct timeval t_slave_end;
 
-    //clock_gettime(CLOCK_MONOTONIC_RAW, &t_total_start);
-    //clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t_total_start);
-
     // Initialization
     err = MPI_Init_thread( &argc, &argv, MPI_THREAD_MULTIPLE, &naoInt );
 
@@ -177,10 +174,6 @@ int main(int argc, char *argv[]){
             printf("Building semaphore and mutex %d\n", i);
 #endif
 
-            // TODO
-            // Check for error
-            /*pthread_mutex_init(&bcaster[i], NULL);*/
-
             if ( pthread_mutex_init(&bchecker[i], NULL) != 0 ){
                 fprintf(stderr, "Failed at semaphore #%d\b", i);
                 exit(-1);
@@ -273,6 +266,10 @@ int main(int argc, char *argv[]){
 
                             pthread_mutex_lock(&bchecker[j]);
 
+                            if ( best == NULL ){
+                                fprintf(stderr, "Master MPI_Send got NULL best\n");
+                                exit(-7);
+                            }
                             MPI_Send(best, 1, dist_instance, j, 1, MPI_COMM_WORLD);
 #ifdef __BCAST_BEST
                             fprintf(stderr, " Master sending a new best to slave %d = %.2f\n", j, best->obj);
@@ -361,6 +358,10 @@ int main(int argc, char *argv[]){
         int ww = 1;
 
         while ( 1 ){
+            if ( get == NULL ){
+                fprintf(stderr, "MPI_Recv got NULL get on slave %d\n", my_rank);
+                exit(-6);
+            }
             MPI_Recv(get, 1, dist_instance, 0, 0, MPI_COMM_WORLD, &status);
 
             list_insert(queue, &get);
@@ -382,20 +383,18 @@ int main(int argc, char *argv[]){
                     fprintf(stderr, " | %.6f | -> Slave %d found new best, sending... %.3f\n", gettime(t_slave_start, t_slave_end), my_rank, best->obj);
 #endif
 
+                    if ( best == NULL ){
+                        fprintf(stderr, "MPI_Send got NULL best on slave %d\n", my_rank);
+                        exit(-6);
+                    }
                     MPI_Send(best, 1, dist_instance, 0, 2, MPI_COMM_WORLD);
-                    pthread_mutex_unlock(bcaster);
 
-                    //continue;
-                } else if (flag == 2 ){                  // nonononononononono
+                } else if (flag == 2 ){
                     // Do nothing
-                    //pthread_mutex_unlock(bcaster);
-                    //continue;
                 } else if (flag == -1){                  // nonononononononono
-                    //pthread_mutex_unlock(bcaster);
-                    //break;
+                    // Do nothing
                 } else if (flag == 0 && is_solved(ins)){ // Found a feasible solution but it is worse than the best
                     free_instance(&ins);
-                    //pthread_mutex_unlock(bcaster);
                 } else {                                 // Continue the brnaching
 
                     branch(queue, &ins, &best);
@@ -422,6 +421,7 @@ int main(int argc, char *argv[]){
                 pthread_mutex_unlock(bcaster);
             }
 
+            pthread_mutex_lock(bcaster);
             if ( best == NULL ) {
 #ifdef __SLAVE_PROGRESS
                 gettimeofday(&t_total_end, NULL);
@@ -429,6 +429,7 @@ int main(int argc, char *argv[]){
 #endif
                 _instance *nop = (_instance*) malloc ( sizeof(_instance) );
                 if ( nop == NULL ){
+                    fprintf(stderr, "MAlloc failed\n");
                     exit( -666 );
                 }
 
@@ -448,20 +449,36 @@ int main(int argc, char *argv[]){
 #endif
                 MPI_Send(best, 1, dist_instance, 0, 0, MPI_COMM_WORLD);
             }
+            pthread_mutex_unlock(bcaster);
             break;
         }
 
         pthread_mutex_lock(bcaster);
 
-        pthread_cancel(*bcastert);
         pthread_join(*bcastert, NULL);
 
+        free(get);
+
+        free(best);
+
         pthread_mutex_unlock(bcaster);
-
-        //free(get);
-
-        //free(best);
     }
+
+    if ( my_rank == 0 ){
+        _instance *nop = (_instance*) malloc ( sizeof(_instance) );
+        if ( nop == NULL ){ exit( -666 ); }
+        nop->obj = -1;
+
+        int i;
+
+        for ( i = 1 ; i<np ; i++){
+            MPI_Send(nop, 1, dist_instance, i, 1, MPI_COMM_WORLD);
+        }
+
+        free(nop);
+    }
+    
+    MPI_Barrier(MPI_COMM_WORLD);
 
 #ifdef __output_answer
     print_instance(best);
@@ -471,27 +488,13 @@ int main(int argc, char *argv[]){
     print_obj(best);
 #endif
 
-    /*free(best);*/
-
     if ( my_rank == 0 ) {
-        //clock_gettime(CLOCK_MONOTONIC_RAW, &t_total_end);
-        //clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t_total_end);
         gettimeofday(&t_total_end, NULL);
     }
 
-    sem_printer = (sem_t*) malloc (sizeof(sem_t) * 1);
-
-    if ( sem_init(sem_printer, 0, 1) != 0 ){
-        fprintf(stderr, "Failed at print semaphore\b");
-        exit(-1);
-    }
-
-    sem_wait(sem_printer);
-    if ( my_rank == 0 ) {                               // PID |  size | total time                   |    master process time         |     main time                | Initialization time
+    if ( my_rank == 0 ) {
         fprintf(stdout, "%f\n", gettime(t_total_start, t_total_end));
-        //fprintf(stdout, "%d %d \t %f \t %f \t %f \t %f\n", my_rank, N, (double)t_total/CLOCKS_PER_SEC, (double)t_master/CLOCKS_PER_SEC, (double)t_main/CLOCKS_PER_SEC, (double)t_queue/CLOCKS_PER_SEC);
     }
-    sem_post(sem_printer);
 
     err = MPI_Finalize();
 
