@@ -74,11 +74,8 @@ void bcaster_func(_thread_param *p){
 #ifdef IPROBE
         //pthread_mutex_lock(bcaster);
         while ( !flag ){
-            //puts("sleeping");
             clock_nanosleep(CLOCK_MONOTONIC, 0, &slower, NULL);
-            //puts("waking n checking");
             MPI_Iprobe(0, 1, MPI_COMM_WORLD, &flag, &status);
-            //puts("checked");
         }
         flag = 0;
         //pthread_mutex_unlock(bcaster);
