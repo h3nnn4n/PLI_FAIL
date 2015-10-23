@@ -22,7 +22,7 @@ int main(){
 
     solve_model(lp, lpp);
 
-    list_insert(queue, lp);
+    list_insert(queue, &lp);
 
     while ( 1 ){
         if ( ++i % 100 == 0 ) {
@@ -35,7 +35,7 @@ int main(){
 
         // Stores the best
         int flag;
-        flag = save_the_best(&best, ins);
+        flag = save_the_best(&best, &ins);
         if        (flag ==  1){
             continue;
         } else if (flag ==  2){
@@ -43,10 +43,10 @@ int main(){
         } else if (flag == -1){
             break;
         } else if (flag ==  0){
-            branch(queue, ins, best);
+            branch(queue, &ins, &best);
         }
 
-        free_instance(ins);
+        free_instance(&ins);
     }
 
     t_clock = clock() - t_clock;

@@ -38,15 +38,15 @@ int        is_solved(_instance*);
 
 _instance* branch_up(_instance*, int);
 _instance* branch_down(_instance*, int);
-void       branch(_list*, _instance*, _instance*);
+void       branch(_list*, _instance**, _instance**);
 
 void       bound(_list*, _instance*);
 
-void       free_instance(_instance*);
+void       free_instance(_instance**);
 
 void       print_instance(_instance*);
 void       print_obj(_instance*);
 
-int        save_the_best(_instance**, _instance*);
+int        save_the_best(_instance**, _instance**);
 
 #endif
