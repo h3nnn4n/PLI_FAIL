@@ -2,12 +2,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <pthread.h>
 
 #include <glpk.h>
 
 #include "list.h"
 
 #include "matrix.h"
+
+extern pthread_mutex_t  mumu;
+extern pthread_mutex_t  best_m;
 
 glp_prob *build_model(_instance *ins){
     int i;
@@ -144,11 +148,13 @@ void print_instance(_instance *ins){
 }
 
 int save_the_best(_instance** best, _instance** candidate){
+    int flag = 1;
+
     if ((*candidate) == NULL){
         return -1;
     } else {
+        pthread_mutex_lock(&best_m);           // 
         if (is_solved((*candidate)) && (*candidate)->obj > 0){
-            int flag = 1;
             if ( (*best == NULL) ){
                 *best = (_instance*) malloc ( sizeof(_instance) );
                 memcpy(*best, (*candidate), sizeof(_instance));
@@ -170,13 +176,13 @@ int save_the_best(_instance** best, _instance** candidate){
 
             free_instance((candidate));
             (*candidate) = NULL;
-            return flag;
         } else if ( (*candidate)->obj <= 0.0 ){
-            return 2;
+            flag = 2;
         }
     }
 
-    return 0;
+    pthread_mutex_unlock(&best_m);         // 
+    return flag;
 }
 
 void branch(_list* queue, _instance** ins, _instance** best){
@@ -186,16 +192,18 @@ void branch(_list* queue, _instance** ins, _instance** best){
     _instance *aux = NULL;
 
     for ( j = 0 ; j < N ; j++ ){
-        if ( is_int((*ins)->x[j]) == 0 ){
+       if ( is_int((*ins)->x[j]) == 0 ){
 
             // Bounding
             aux = branch_down(*ins, j);
 
             ret = save_the_best(best, ins);
             if ( ret == 0 && aux->obj > 0 ){
+                pthread_mutex_lock(&best_m);
                 if ( ((*best) != NULL && aux->obj > (*best)->obj) || (*best == NULL) ){
                     list_insert(queue, &aux);
                 }
+                pthread_mutex_unlock(&best_m);
             } else {
                 free_instance(&aux);
             }
@@ -205,9 +213,11 @@ void branch(_list* queue, _instance** ins, _instance** best){
 
             ret = save_the_best(best, ins);
             if ( ret == 0 && aux->obj > 0 ){
+                pthread_mutex_lock(&best_m);
                 if ( ((*best) != NULL && aux->obj > (*best)->obj) || (best == NULL) ){
                     list_insert(queue, &aux);
                 }
+                pthread_mutex_unlock(&best_m);
             } else {
                 free_instance(&aux);
             }
