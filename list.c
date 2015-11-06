@@ -8,7 +8,6 @@
 #include "matrix.h"
 
 extern pthread_mutex_t  mumu;
-extern pthread_mutex_t  best_m;
 
 _list *list_init(){
     _list *new = (_list*) malloc ( sizeof(_list) );

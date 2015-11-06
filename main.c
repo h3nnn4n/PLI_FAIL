@@ -58,8 +58,7 @@ int main(int argc, char *argv[]){
 
     int flag;
 
-    while ( list_size(queue) != 0 ){
-        printf("list size = %d\n", list_size(queue));
+    while ( list_size(queue) != np ){
         _instance *ins = list_pop(queue);
 
         flag = save_the_best(&best, &ins);
@@ -75,9 +74,8 @@ int main(int argc, char *argv[]){
         }
 
         free_instance(&ins);
+        printf("list size = %d\n", list_size(queue));
     }
-
-    return 0;
 
     // Start the workers
     for ( i = 0 ; i < np ; i++ ){

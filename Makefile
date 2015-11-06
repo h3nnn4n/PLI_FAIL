@@ -1,6 +1,6 @@
 CC=gcc
 C_FLAGS=$(CFLAGS) -Wall -O2 -lglpk -lm -g -lrt -pthread
-SOURCES=main.c matrix.c utils.c list.c threads.c
+SOURCES=main.c matrix.c utils.c list.c threads.c matrix_ret.c
 BIN=main
 
 .PHONY: clean
