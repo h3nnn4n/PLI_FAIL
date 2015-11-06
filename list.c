@@ -83,7 +83,9 @@ int list_size(_list *h){
     _list *a;
     int i;
 
+    pthread_mutex_lock(&mumu);
     for ( a = h->next, i = 0 ; a != NULL ; a = a->next, i++);
+    pthread_mutex_unlock(&mumu);
 
     return i;
 }

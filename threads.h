@@ -6,6 +6,13 @@
 #include "list.h"
 #include "matrix.h"
 
-void number_crusher();
+typedef struct {
+    int         id;
+    _list      *queue;
+    _instance  *best;
+    _instance **best_pp;
+} thread_param;
+
+void number_crusher(thread_param *);
 
 #endif /* __THREADS_BNB */
