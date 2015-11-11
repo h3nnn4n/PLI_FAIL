@@ -205,7 +205,7 @@ void branch(_list* queue, _instance** ins, _instance** best){
 
             ret = save_the_best(best, ins);
             if ( ret == 0 && aux->obj > 0 ){
-                if ( ((*best) != NULL && aux->obj > (*best)->obj) || (best == NULL) ){
+                if ( ((*best) != NULL && aux->obj > (*best)->obj) || (*best == NULL) ){
                     list_insert(queue, &aux);
                 }
             } else {
