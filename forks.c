@@ -36,12 +36,17 @@ void slave(int pid_n){
 
     sem_wait(semaphore);
 
-    _instance *p = (_instance*) shmat (shm_id[pid_n], (void*) 0, 0);
+    _shared_instance *p = (_shared_instance*) shmat (shm_id[pid_n], (void*) 0, 0);
 
-    printf("%d has %d \t | %.3f \n", getpid(), pid_n, p->obj);
+    printf("%d has %d \t | %.3f \n", getpid(), pid_n, (&p->p1)->obj);
     //printf("%d has %d \t |\n", getpid(), pid_n);
 
     //sleep(1);
+
+    return;
+}
+
+void babysitter(_thread_param param){
 
     return;
 }

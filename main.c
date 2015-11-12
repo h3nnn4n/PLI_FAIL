@@ -3,6 +3,9 @@
 #include <string.h>
 #include <time.h>
 
+// Threads magic
+#include <pthread.h>
+
 // fork() stuff
 #include <semaphore.h>
 #include <sys/types.h>
@@ -15,6 +18,9 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+
+// Errorno
+#include <errno.h>
 
 #include <glpk.h> 
 
@@ -37,7 +43,6 @@
 #define SHM_KEY 666
 #endif
 
-
 int shm_id[NPROCESS];
 
 int main(){
@@ -45,14 +50,20 @@ int main(){
     _instance *best  = NULL;
     _list     *queue = list_init();
     int i = 0;
-    sem_t **semaphores;
     char sem_name[256];
     int fpid[NPROCESS];
-    _instance *p;
+    sem_t            **semaphores;
+    _shared_instance  *pp;
+    pthread_t         *threads;
+    _thread_param     *threads_param;
+    int               *threads_id;
 
     semaphores = (sem_t**) malloc ( sizeof (sem_t*) * NPROCESS );
+    if ( semaphores == NULL ) {
+        handle_error("Semaphore memory init failed");
+    }
 
-    for ( i = 0 ; i < NPROCESS ; i++){
+    for ( i = 0 ; i < NPROCESS ; i++){ // Forking + shared mem + named semaphores
         sprintf(sem_name, "__pli_%d", i);
         semaphores[i] = sem_open(sem_name, O_CREAT, 0600, 0);
 
@@ -61,18 +72,39 @@ int main(){
             exit(-1);
         }
 
-        if ((shm_id[i] = shmget(SHM_KEY + i, sizeof(_instance), IPC_CREAT | 0666)) < 0) {
+        if ((shm_id[i] = shmget(SHM_KEY + i, sizeof(_shared_instance), IPC_CREAT | 0666)) < 0) {
             handle_error("Failed on shmget");
             exit(1);
         }
 
         fpid[i] = fork();
 
+        if (fpid[i] == -1){
+            handle_error("Failed on fork");
+        }
+
         if (fpid[i] == 0){ // children code;
             slave(i);
             
             exit( 1 );
             break;
+        }
+    }
+
+    threads       = (pthread_t     *) malloc ( sizeof (pthread_t    ) * NPROCESS );
+    threads_param = (_thread_param *) malloc ( sizeof (_thread_param) * NPROCESS );
+    threads_id    = (int           *) malloc ( sizeof (int          ) * NPROCESS );
+
+    if ( threads == NULL || threads_param == NULL || threads_id ) {
+        handle_error("Allocating memory for threads failed");
+    }
+
+    for ( i = 0 ; i < NPROCESS ; i++){ // Babysitter threads
+        threads_id[i] = pthread_create(&threads[i], NULL,
+                               (void*) &babysitter, &threads_param[i]);         
+
+        if (threads_id[i] != 0){
+            handle_error("Thread init failed");
         }
     }
 
@@ -86,11 +118,11 @@ int main(){
     _instance *ins = list_pop(queue);
 
     for ( i = 0 ; i < NPROCESS ; i++){
-        p = (_instance*) shmat (shm_id[i], (void*) 0, 0);
-        memcpy(p, ins, sizeof(_instance));
+        pp = (_shared_instance*) shmat (shm_id[i], (void*) 0, 0);
+        memcpy(&pp->p1, ins, sizeof(_shared_instance));
         sem_post(semaphores[i]);
         if ( i == 0)
-            p->obj = 666;
+            (&pp->p1)->obj = 666;
     }
 
     wait(NULL);
