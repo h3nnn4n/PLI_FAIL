@@ -52,16 +52,18 @@ void list_insert(_list *h, _instance **a){
 
     pthread_mutex_unlock(list_mutex);
 
-    free_instance(a);
+    //free_instance(a);
 
     return;
 }
 
 _instance *list_pop(_list *h){
-    _list *a;
-    _instance *data = NULL;
+gambi:
 
     pthread_mutex_lock(list_mutex);
+
+    _list *a;
+    _instance *data = NULL;
 
     a = h->next;
     if (a != NULL){
@@ -70,6 +72,10 @@ _instance *list_pop(_list *h){
     }
 
     pthread_mutex_unlock(list_mutex);
+
+    if ( data == NULL ) {
+        goto gambi;
+    }
 
     return data;
 }
@@ -82,7 +88,9 @@ int list_size(_list *h){
     _list *a;
     int i;
 
+    pthread_mutex_lock(list_mutex);
     for ( a = h->next, i = 0 ; a != NULL ; a = a->next, i++);
+    pthread_mutex_unlock(list_mutex);
 
     return i;
 }

@@ -7,7 +7,8 @@ typedef struct{
    int      pid; 
    int      tid;
    _list   *queue;
-   sem_t  **semaphores;
+   sem_t  **semaphores_slave;
+   sem_t  **semaphores_babysitter;
 } _thread_param;
 
 void slave(int);

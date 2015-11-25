@@ -54,22 +54,32 @@ int main(){
     int i = 0;
     char sem_name[256];
     int fpid[NPROCESS];
-    sem_t            **semaphores;
+    sem_t            **semaphores_slave;
+    sem_t            **semaphores_babysitter;
     //_shared_instance  *pp;
     pthread_t         *threads;
     _thread_param     *threads_param;
     int               *threads_id;
 
-    semaphores = (sem_t**) malloc ( sizeof (sem_t*) * NPROCESS );
-    if ( semaphores == NULL ) {
+    semaphores_slave      = (sem_t**) malloc ( sizeof (sem_t*) * NPROCESS );
+    semaphores_babysitter = (sem_t**) malloc ( sizeof (sem_t*) * NPROCESS );
+    if ( semaphores_slave == NULL || semaphores_babysitter == NULL ) {
         handle_error("Semaphore memory init failed");
     }
 
     for ( i = 0 ; i < NPROCESS ; i++){ // Forking + shared mem + named semaphores
-        sprintf(sem_name, "__pli_%d", i);
-        semaphores[i] = sem_open(sem_name, O_CREAT, 0600, 0);
+        sprintf(sem_name, "__pli_slave_%d", i);
+        semaphores_slave[i] = sem_open(sem_name, O_CREAT, 0600, 0);
 
-        if (semaphores[i] == SEM_FAILED){
+        if (semaphores_slave[i] == SEM_FAILED){
+            handle_error("Failed on sem_open");
+            exit(-1);
+        }
+
+        sprintf(sem_name, "__pli_babysitter_%d", i);
+        semaphores_babysitter[i] = sem_open(sem_name, O_CREAT, 0600, 0);
+
+        if (semaphores_babysitter[i] == SEM_FAILED){
             handle_error("Failed on sem_open");
             exit(-1);
         }
@@ -112,10 +122,11 @@ int main(){
     pthread_mutex_init(list_mutex, NULL);
 
     for ( i = 0 ; i < NPROCESS ; i++){ // Babysitter threads
-        threads_param[i].pid        = 0;
-        threads_param[i].tid        = i;
-        threads_param[i].queue      = queue;
-        threads_param[i].semaphores = semaphores;
+        threads_param[i].pid                   = 0;
+        threads_param[i].tid                   = i;
+        threads_param[i].queue                 = queue;
+        threads_param[i].semaphores_slave      = semaphores_slave;
+        threads_param[i].semaphores_babysitter = semaphores_babysitter;
 
         threads_id[i] = pthread_create(&threads[i], NULL, (void*) &babysitter, &threads_param[i]);
 
@@ -133,37 +144,35 @@ int main(){
 
     //int count = 5;
     //while ( count-- > 0 ){
-    while ( list_size(queue) != NPROCESS ){
-        _instance *ins = list_pop(queue);
+    //while ( list_size(queue) != NPROCESS ){
+        //_instance *ins = list_pop(queue);
 
-        //printf("%d %d   \t %.3f %.3f\n", i, list_size(queue) + 1, best != NULL ? best->obj : 0.0, ins->obj);
+        ////printf("%d %d   \t %.3f %.3f\n", i, list_size(queue) + 1, best != NULL ? best->obj : 0.0, ins->obj);
 
-        if ( ++i % 100 == 0 ) {
-#ifdef __progress
-            printf("%d %d   \t %.3f %.3f\n", i, list_size(queue) + 1, best != NULL ? best->obj : 0.0, ins->obj);
-#endif
-        }
+        //if ( ++i % 10 == 0 ) {
+//#ifdef __progress
+            //printf("%d %d   \t %.3f %.3f\n", i, list_size(queue) + 1, best != NULL ? best->obj : 0.0, ins->obj);
+//#endif
+        //}
 
-        // Stores the best
-        int flag;
-        flag = save_the_best(&best, &ins);
-        if        (flag ==  1){
-#ifdef __bound
-            bound(queue, best); 
-#endif
-            continue;
-        } else if (flag ==  2){
-            continue;
-        } else if (flag == -1){
-            break;
-        } else if (flag ==  0){
-            branch(queue, &ins, &best);
-        }
+        //// Stores the best
+        //int flag;
+        //flag = save_the_best(&best, &ins);
+        //if        (flag ==  1){
+//#ifdef __bound
+            //bound(queue, best); 
+//#endif
+            //continue;
+        //} else if (flag ==  2){
+            //continue;
+        //} else if (flag == -1){
+            //break;
+        //} else if (flag ==  0){
+            //branch(queue, &ins, &best);
+        //}
 
-        free_instance(&ins);
-    }
-
-    //printf("%d %d\n", list_size(queue), NPROCESS);
+        //free_instance(&ins);
+    //}
 
     pthread_barrier_wait(&go_horse);
 
@@ -186,7 +195,8 @@ int main(){
     fprintf(stdout, " %f %f %d %f\n", (double)t_clock/CLOCKS_PER_SEC, ((double)t_clock/CLOCKS_PER_SEC)/i, i, i/(((double)t_clock/CLOCKS_PER_SEC)));
 
     for ( i = 0 ; i < NPROCESS ; i++){
-        sprintf(sem_name, "__pli_%d", i);
+        sprintf(sem_name, "__pli_slave_%d", i);
+        sprintf(sem_name, "__pli_babysitter_%d", i);
         sem_unlink(sem_name);
     }
 
