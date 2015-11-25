@@ -1,10 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "list.h"
 
 #include "matrix.h"
+
+extern  pthread_mutex_t    *list_mutex;
 
 _list *list_init(){
     _list *new = (_list*) malloc ( sizeof(_list) );
@@ -16,6 +19,8 @@ _list *list_init(){
 }
 
 void list_insert(_list *h, _instance **a){
+    pthread_mutex_lock(list_mutex);
+
     _instance *data = (_instance*) malloc ( sizeof(_instance) );
     _list     *new  = (_list*    ) malloc ( sizeof(_list    ) );
     _list     *aux;
@@ -45,6 +50,8 @@ void list_insert(_list *h, _instance **a){
         new->next = tmp;
     }
 
+    pthread_mutex_unlock(list_mutex);
+
     free_instance(a);
 
     return;
@@ -54,11 +61,15 @@ _instance *list_pop(_list *h){
     _list *a;
     _instance *data = NULL;
 
+    pthread_mutex_lock(list_mutex);
+
     a = h->next;
     if (a != NULL){
         data = a->ins;
         h->next = a->next;
     }
+
+    pthread_mutex_unlock(list_mutex);
 
     return data;
 }

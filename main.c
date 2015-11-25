@@ -43,7 +43,9 @@
 #define SHM_KEY 666
 #endif
 
-int shm_id[NPROCESS];
+int                 shm_id[NPROCESS];
+pthread_barrier_t   go_horse;
+pthread_mutex_t    *list_mutex;
 
 int main(){
     _instance *lp    = read_instance();
@@ -91,17 +93,31 @@ int main(){
         }
     }
 
-    threads       = (pthread_t     *) malloc ( sizeof (pthread_t    ) * NPROCESS );
-    threads_param = (_thread_param *) malloc ( sizeof (_thread_param) * NPROCESS );
-    threads_id    = (int           *) malloc ( sizeof (int          ) * NPROCESS );
+    threads       = (pthread_t       *) malloc ( sizeof (pthread_t      ) * NPROCESS );
+    threads_param = (_thread_param   *) malloc ( sizeof (_thread_param  ) * NPROCESS );
+    threads_id    = (int             *) malloc ( sizeof (int            ) * NPROCESS );
+    list_mutex    = (pthread_mutex_t *) malloc ( sizeof (pthread_mutex_t) * 1        );
 
-    if ( threads == NULL || threads_param == NULL || threads_id ) {
+    pthread_barrier_init(&go_horse, NULL, NPROCESS + 1);
+
+    if ( threads == NULL || threads_param == NULL || threads_id == NULL ) {
+        printf("%p %p %p\n", threads, threads_param, threads_id);
         handle_error("Allocating memory for threads failed");
     }
 
+    if ( list_mutex == NULL ) {
+        handle_error("Allocating memory for mutexes failed");
+    }
+
+    pthread_mutex_init(list_mutex, NULL);
+
     for ( i = 0 ; i < NPROCESS ; i++){ // Babysitter threads
-        threads_id[i] = pthread_create(&threads[i], NULL,
-                               (void*) &babysitter, &threads_param[i]);         
+        threads_param[i].pid        = 0;
+        threads_param[i].tid        = i;
+        threads_param[i].queue      = queue;
+        threads_param[i].semaphores = semaphores;
+
+        threads_id[i] = pthread_create(&threads[i], NULL, (void*) &babysitter, &threads_param[i]);
 
         if (threads_id[i] != 0){
             handle_error("Thread init failed");
@@ -115,21 +131,12 @@ int main(){
 
     list_insert(queue, &lp);
 
-    _instance *ins = list_pop(queue);
-
-    for ( i = 0 ; i < NPROCESS ; i++){
-        pp = (_shared_instance*) shmat (shm_id[i], (void*) 0, 0);
-        memcpy(&pp->p1, ins, sizeof(_shared_instance));
-        sem_post(semaphores[i]);
-        if ( i == 0)
-            (&pp->p1)->obj = 666;
-    }
-
-    wait(NULL);
-    exit(0);
-
-    while ( 1 ){
+    int count = 5;
+    while ( count-- > 0 ){
+    //while ( list_size(queue) != NPROCESS ){
         _instance *ins = list_pop(queue);
+
+        printf("%d %d   \t %.3f %.3f\n", i, list_size(queue) + 1, best != NULL ? best->obj : 0.0, ins->obj);
 
         if ( ++i % 100 == 0 ) {
 #ifdef __progress
@@ -155,6 +162,12 @@ int main(){
 
         free_instance(&ins);
     }
+
+    printf("%d   \n", list_size(queue));
+
+    sleep(2);
+
+    pthread_barrier_wait(&go_horse);
 
     t_clock = clock() - t_clock;
 

@@ -1,11 +1,16 @@
 #ifndef __forks_pli
 #define __forks_pli
 
+#include "list.h"
+
 typedef struct{
-   int pid; 
+   int      pid; 
+   int      tid;
+   _list   *queue;
+   sem_t  **semaphores;
 } _thread_param;
 
 void slave(int);
-void babysitter(_thread_param param);
+void babysitter(_thread_param *param);
 
 #endif /* __forks_pli */
