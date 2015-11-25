@@ -38,9 +38,11 @@ void slave(int pid_n){
     sprintf(sem_name, "__pli_%d", pid_n);
     sem_t *semaphore = sem_open(sem_name, O_CREAT, 0600, 0);
 
-    printf("Waiting\n");
+    printf("Waiting %d\n", pid_n);
+    
     sem_wait(semaphore);
-    printf("Starting\n");
+
+    printf("Starting %d\n", pid_n);
 
     _shared_instance *p = (_shared_instance*) shmat (shm_id[pid_n], (void*) 0, 0);
 
@@ -53,14 +55,14 @@ void babysitter(_thread_param *param){
     int i;
 
     i = param->tid;
+
     pthread_barrier_wait(&go_horse);
 
-    printf("%d %p\n", i, param->semaphores[i]);
+    //printf("%d %p\n", i, param->semaphores[i]);
 
     _shared_instance *pp;
 
     _instance *ins;
-
    
     ins = list_pop(param->queue);
 
@@ -69,9 +71,9 @@ void babysitter(_thread_param *param){
 
     sem_post(param->semaphores[i]);
 
-    if ( i == 0 ) {
-        (&pp->p1)->obj = 666;
-    }
+    //if ( i == 0 ) {
+        //(&pp->p1)->obj = 666;
+    //}
 
     return;
 }

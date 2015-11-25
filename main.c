@@ -55,7 +55,7 @@ int main(){
     char sem_name[256];
     int fpid[NPROCESS];
     sem_t            **semaphores;
-    _shared_instance  *pp;
+    //_shared_instance  *pp;
     pthread_t         *threads;
     _thread_param     *threads_param;
     int               *threads_id;
@@ -131,12 +131,12 @@ int main(){
 
     list_insert(queue, &lp);
 
-    int count = 5;
-    while ( count-- > 0 ){
-    //while ( list_size(queue) != NPROCESS ){
+    //int count = 5;
+    //while ( count-- > 0 ){
+    while ( list_size(queue) != NPROCESS ){
         _instance *ins = list_pop(queue);
 
-        printf("%d %d   \t %.3f %.3f\n", i, list_size(queue) + 1, best != NULL ? best->obj : 0.0, ins->obj);
+        //printf("%d %d   \t %.3f %.3f\n", i, list_size(queue) + 1, best != NULL ? best->obj : 0.0, ins->obj);
 
         if ( ++i % 100 == 0 ) {
 #ifdef __progress
@@ -163,9 +163,7 @@ int main(){
         free_instance(&ins);
     }
 
-    printf("%d   \n", list_size(queue));
-
-    sleep(2);
+    //printf("%d %d\n", list_size(queue), NPROCESS);
 
     pthread_barrier_wait(&go_horse);
 
@@ -194,3 +192,4 @@ int main(){
 
     return EXIT_SUCCESS;
 }
+
